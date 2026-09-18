@@ -83,7 +83,7 @@ ColumnLayout {
                 Label {
                     anchors.fill: parent
                     anchors.leftMargin: 8 + (folderDelegate.fileEntry
-                                             ? folderDelegate.fileEntry.depth * 10 : 0)
+                                             ? folderDelegate.fileEntry.depth * 14 : 0)
                     anchors.rightMargin: 6
                     text: folderDelegate.fileEntry ? folderDelegate.fileEntry.name : ""
                     elide: Text.ElideMiddle
@@ -148,9 +148,11 @@ ColumnLayout {
                 id: fileDelegate
                 required property var modelData
                 readonly property var fileEntry: modelData
-                readonly property bool isFolder: false
+                readonly property bool isFolder:
+                    fileEntry && fileEntry.kind === "folder"
                 readonly property bool currentFile:
-                    fileEntry && backend.fileUrl.toString() === fileEntry.url.toString()
+                    fileEntry && !isFolder
+                    && backend.fileUrl.toString() === fileEntry.url.toString()
                 readonly property bool renaming:
                     fileEntry && win.renamingUrl.toString() === fileEntry.url.toString()
                 width: ListView.view ? ListView.view.width : parent.width
@@ -166,7 +168,8 @@ ColumnLayout {
 
                 DragHandler {
                     id: fileDrag
-                    enabled: !fileDelegate.renaming && backend.projectView === "mindmap"
+                    enabled: !fileDelegate.renaming && !fileDelegate.isFolder
+                             && backend.projectView === "mindmap"
                     target: null
                     acceptedButtons: Qt.LeftButton
                 }
@@ -190,7 +193,7 @@ ColumnLayout {
                         if (!fileDelegate.fileEntry)
                             return
                         backend.selectedWorkspacePath = fileDelegate.fileEntry.path
-                        if (!fileDelegate.currentFile)
+                        if (!fileDelegate.isFolder && !fileDelegate.currentFile)
                             win.requestOpen(fileDelegate.fileEntry.url)
                     }
                 }
@@ -209,9 +212,18 @@ ColumnLayout {
                         radius: 4
                         color: win.darkMode ? "#1b1b1b" : "#efeae2"
                         clip: true
+                        Label {
+                            anchors.centerIn: parent
+                            visible: fileDelegate.isFolder
+                            text: "▸"
+                            color: win.mutedColor
+                            font.family: "iA Writer Mono S"
+                            font.pixelSize: win.scaledSize(14)
+                        }
                         Image {
                             anchors.fill: parent
-                            visible: fileDelegate.fileEntry && fileDelegate.fileEntry.cover
+                            visible: !fileDelegate.isFolder
+                                     && fileDelegate.fileEntry && fileDelegate.fileEntry.cover
                             source: fileDelegate.fileEntry && fileDelegate.fileEntry.cover
                                     ? fileDelegate.fileEntry.cover : ""
                             fillMode: Image.PreserveAspectCrop
@@ -223,10 +235,12 @@ ColumnLayout {
                         width: parent.width - win.scaledSize(34)
                         height: parent.height
                         text: fileDelegate.fileEntry
-                              ? ((fileDelegate.fileEntry.pinned ? "★ " : "")
-                                 + (fileDelegate.fileEntry.threads
-                                    ? (fileDelegate.fileEntry.name + "  · Threads")
-                                    : fileDelegate.fileEntry.name))
+                              ? (fileDelegate.isFolder
+                                 ? fileDelegate.fileEntry.name
+                                 : ((fileDelegate.fileEntry.pinned ? "★ " : "")
+                                    + (fileDelegate.fileEntry.threads
+                                       ? (fileDelegate.fileEntry.name + "  · Threads")
+                                       : fileDelegate.fileEntry.name)))
                               : ""
                         elide: Text.ElideMiddle
                         color: win.strongTextColor
@@ -249,14 +263,19 @@ ColumnLayout {
                     verticalAlignment: Text.AlignVCenter
                     clip: true
                     onVisibleChanged: if (visible && fileDelegate.fileEntry) {
-                        text = win.noteStem(fileDelegate.fileEntry.name)
+                        text = fileDelegate.isFolder
+                               ? fileDelegate.fileEntry.name
+                               : win.noteStem(fileDelegate.fileEntry.name)
                         forceActiveFocus()
                         selectAll()
                     }
                     function commitRename() {
                         if (!fileDelegate.fileEntry)
                             return
-                        backend.renameNote(fileDelegate.fileEntry.url, text)
+                        if (fileDelegate.isFolder)
+                            backend.renameFolder(fileDelegate.fileEntry.url, text)
+                        else
+                            backend.renameNote(fileDelegate.fileEntry.url, text)
                         win.renamingUrl = ""
                     }
                     onAccepted: commitRename()
@@ -271,16 +290,20 @@ ColumnLayout {
                 Menu {
                     id: fileMenu
                     MenuItem {
+                        visible: !fileDelegate.isFolder
                         text: (backend.uiLanguage, backend.t("openNote"))
                         onTriggered: if (fileDelegate.fileEntry)
                             win.requestOpen(fileDelegate.fileEntry.url)
                     }
                     MenuItem {
-                        text: (backend.uiLanguage, backend.t("renameNote"))
+                        text: fileDelegate.isFolder
+                              ? (backend.uiLanguage, backend.t("renameFolder"))
+                              : (backend.uiLanguage, backend.t("renameNote"))
                         onTriggered: if (fileDelegate.fileEntry)
                             win.startRename(fileDelegate.fileEntry.url)
                     }
                     MenuItem {
+                        visible: !fileDelegate.isFolder
                         text: fileDelegate.fileEntry && fileDelegate.fileEntry.pinned
                               ? (backend.uiLanguage, backend.t("unpinNote"))
                               : (backend.uiLanguage, backend.t("pinNote"))
@@ -310,7 +333,7 @@ ColumnLayout {
         text: backend.tagFilter.length > 0
             ? "No notes tagged #" + backend.tagFilter + "."
             : (backend.workspaceFolderPath.length > 0
-                ? "No Markdown files in this folder."
+                ? "No Markdown files or folders in this folder."
                 : (backend.uiLanguage, backend.t("openFolderHint")))
         color: win.mutedColor
         font.family: "iA Writer Mono S"

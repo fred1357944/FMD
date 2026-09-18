@@ -521,6 +521,7 @@ private:
     void clearRecovery();
     QString recoveryPath() const;
     void watchCurrentFile();
+    void watchWorkspaceDirectories();
     void setWorkspaceFolderUrl(const QUrl &url);
     void refreshWorkspaceFiles();
     void refreshNoteLinks();
@@ -670,6 +671,8 @@ private:
     bool m_slidevAborting = false;
     QFileSystemWatcher m_fileWatcher;
     QFileSystemWatcher m_inboxWatcher;
+    QFileSystemWatcher m_workspaceWatcher;
+    QTimer m_workspaceRefreshTimer;
     bool m_refreshingInbox = false;
     QPointer<QTextDocument> m_document;
     QPointer<QTextDocument> m_previewDocument;

@@ -613,6 +613,12 @@ Backend::Backend(QObject *parent) : QObject(parent) {
             [this]() { refreshInboxFiles(); });
     connect(&m_inboxWatcher, &QFileSystemWatcher::fileChanged, this,
             [this]() { refreshInboxFiles(); });
+    m_workspaceRefreshTimer.setSingleShot(true);
+    m_workspaceRefreshTimer.setInterval(180);
+    connect(&m_workspaceRefreshTimer, &QTimer::timeout, this,
+            [this]() { refreshWorkspaceFiles(); });
+    connect(&m_workspaceWatcher, &QFileSystemWatcher::directoryChanged, this,
+            [this]() { m_workspaceRefreshTimer.start(); });
 
             QSettings settings;
             m_sidebarVisible = settings.value(sidebarVisibleSetting, true).toBool();
@@ -3843,6 +3849,38 @@ void Backend::rebuildWorkspaceTree()
         emit workspaceTreeChanged();
         emit workspaceNavChanged();
     }
+    watchWorkspaceDirectories();
+}
+
+void Backend::watchWorkspaceDirectories()
+{
+    QSet<QString> wanted;
+    const QString root = workspaceFolderPath();
+    if (!root.isEmpty() && QDir(root).exists())
+        wanted.insert(QDir(root).absolutePath());
+    for (const QString &path : m_workspaceFolderPaths) {
+        const QString abs = QDir(path).absolutePath();
+        if (QDir(abs).exists())
+            wanted.insert(abs);
+        if (wanted.size() >= 200)
+            break;
+    }
+    const QStringList have = m_workspaceWatcher.directories();
+    QSet<QString> haveSet(have.begin(), have.end());
+    QStringList toRemove;
+    for (const QString &path : haveSet) {
+        if (!wanted.contains(path))
+            toRemove.append(path);
+    }
+    QStringList toAdd;
+    for (const QString &path : wanted) {
+        if (!haveSet.contains(path))
+            toAdd.append(path);
+    }
+    if (!toRemove.isEmpty())
+        m_workspaceWatcher.removePaths(toRemove);
+    if (!toAdd.isEmpty())
+        m_workspaceWatcher.addPaths(toAdd);
 }
 
 void Backend::persistCollapsedFolders()
@@ -4470,10 +4508,27 @@ QVariantList Backend::workspaceNavFiles() const
     else if (m_fileSort == QLatin1String("mtime-asc"))
         flags = QDir::Time | QDir::Reversed;
 
+    QVariantList files;
+    const QString root = workspaceFolderPath();
+    const QFileInfoList dirs = QDir(folder).entryInfoList(
+        QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable, flags);
+    for (const QFileInfo &info : dirs) {
+        const QString abs = info.absoluteFilePath();
+        if (!root.isEmpty() && shouldSkipWorkspacePath(root, abs))
+            continue;
+        files.append(QVariantMap{
+            {QStringLiteral("kind"), QStringLiteral("folder")},
+            {QStringLiteral("name"), info.fileName()},
+            {QStringLiteral("path"), abs},
+            {QStringLiteral("url"), QUrl::fromLocalFile(abs)},
+            {QStringLiteral("depth"), 0},
+            {QStringLiteral("modified"), info.lastModified().toMSecsSinceEpoch()},
+        });
+    }
+
     const QFileInfoList entries = QDir(folder).entryInfoList(
         QStringList{QStringLiteral("*.md"), QStringLiteral("*.markdown")}, QDir::Files, flags);
 
-    QVariantList files;
     for (const QFileInfo &info : entries) {
         const QString abs = info.absoluteFilePath();
         if (!m_tagFilter.isEmpty() && !byPath.contains(abs))

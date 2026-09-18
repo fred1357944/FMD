@@ -3226,6 +3226,42 @@ private slots:
         QCOMPARE(backend.editorPlainText(), QStringLiteral("hello there"));
     }
 
+    void dualPaneListsNestedEmptyFoldersInParent() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        QVERIFY(QDir().mkpath(directory.filePath(QStringLiteral("published/inner"))));
+        QFile note(directory.filePath(QStringLiteral("published/a.md")));
+        QVERIFY(note.open(QIODevice::WriteOnly | QIODevice::Text));
+        note.write("hi\n");
+        note.close();
+
+        Backend backend;
+        backend.openFolder(QUrl::fromLocalFile(directory.path()));
+        QStringList folderNames;
+        QHash<QString, int> depths;
+        for (const QVariant &item : backend.workspaceNavFolders()) {
+            const QVariantMap row = item.toMap();
+            const QString name = row.value(QStringLiteral("name")).toString();
+            folderNames.append(name);
+            depths.insert(name, row.value(QStringLiteral("depth")).toInt());
+        }
+        QVERIFY(folderNames.contains(QStringLiteral("published")));
+        QVERIFY(folderNames.contains(QStringLiteral("inner")));
+        QCOMPARE(depths.value(QStringLiteral("inner")), 2);
+
+        backend.setSelectedWorkspacePath(directory.filePath(QStringLiteral("published")));
+        QStringList names;
+        QStringList kinds;
+        for (const QVariant &item : backend.workspaceNavFiles()) {
+            names.append(item.toMap().value(QStringLiteral("name")).toString());
+            kinds.append(item.toMap().value(QStringLiteral("kind")).toString());
+        }
+        QVERIFY(names.contains(QStringLiteral("inner")));
+        QVERIFY(names.contains(QStringLiteral("a.md")));
+        QCOMPARE(kinds.first(), QStringLiteral("folder"));
+        QVERIFY(kinds.contains(QStringLiteral("file")));
+    }
+
     void cardsViewCoverPinTagAndAndHeatmap() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
