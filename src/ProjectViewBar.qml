@@ -30,8 +30,8 @@ ColumnLayout {
                 { id: "table", labelKey: "table" },
                 { id: "board", labelKey: "board" },
                 { id: "calendar", labelKey: "calendar" },
-                { id: "cards", labelKey: "cards" },
-                { id: "mindmap", labelKey: "mindmap" }
+                { id: "mindmap", labelKey: "mindmap" },
+                { id: "cards", labelKey: "cards" }
             ]
 
             ToolButton {

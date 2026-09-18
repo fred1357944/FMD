@@ -1678,6 +1678,10 @@ private slots:
             tagNames.append(item.toMap().value(QStringLiteral("name")).toString());
         QVERIFY(tagNames.contains(QStringLiteral("paper")));
         QVERIFY(tagNames.contains(QStringLiteral("fieldwork")));
+        QVERIFY(!FrontMatter::allTags(QStringLiteral("---\n---\n<!--c:#81C784-->\n#keep\n"))
+                     .contains(QStringLiteral("81C784")));
+        QVERIFY(FrontMatter::allTags(QStringLiteral("---\n---\n<!--c:#81C784-->\n#keep\n"))
+                    .contains(QStringLiteral("keep")));
 
         backend.setTagFilter(QStringLiteral("paper"));
         QCOMPARE(backend.tagFilter(), QStringLiteral("paper"));
@@ -1843,6 +1847,16 @@ private slots:
         QVERIFY(cardsShortcut);
         QVERIFY(QMetaObject::invokeMethod(cardsShortcut, "activated"));
         QCOMPARE(backend.projectView(), QStringLiteral("cards"));
+
+        const QString barPath = QFINDTESTDATA("../src/ProjectViewBar.qml");
+        QVERIFY(!barPath.isEmpty());
+        QFile barFile(barPath);
+        QVERIFY(barFile.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString bar = QString::fromUtf8(barFile.readAll());
+        const int mindmapAt = bar.indexOf(QStringLiteral("id: \"mindmap\""));
+        const int cardsAt = bar.indexOf(QStringLiteral("id: \"cards\""));
+        QVERIFY(mindmapAt > 0);
+        QVERIFY(cardsAt > mindmapAt);
     }
 
     void scalesTextWithDesktopTextSize() {
@@ -3445,13 +3459,19 @@ private slots:
                  QStringLiteral("beta-only.md"));
         QVERIFY(backend.workspaceNavFolders().size() >= 2);
         QVERIFY(backend.randomCardUrl().isLocalFile());
-        QCOMPARE(backend.activityHeatmap().size(), 16 * 7);
+        const QVariantList heatDays = backend.activityHeatmap();
+        QVERIFY(!heatDays.isEmpty());
+        QCOMPARE(heatDays.size() % 7, 0);
+        QCOMPARE(heatDays.first().toMap().value(QStringLiteral("weekday")).toInt(), 0);
         int heat = 0;
-        for (const QVariant &day : backend.activityHeatmap()) {
+        for (const QVariant &day : heatDays) {
             if (day.toMap().value(QStringLiteral("date")).toString() == today)
                 heat = day.toMap().value(QStringLiteral("count")).toInt();
         }
         QCOMPARE(heat, 3);
+        backend.revealCalendarDate(today);
+        QCOMPARE(backend.calendarYear(), QDate::currentDate().year());
+        QCOMPARE(backend.calendarMonth(), QDate::currentDate().month());
         QCOMPARE(backend.workspaceShortcuts().size(), 1);
     }
 

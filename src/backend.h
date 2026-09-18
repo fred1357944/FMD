@@ -353,6 +353,7 @@ public:
     Q_INVOKABLE void stepCalendar(int monthDelta);
     Q_INVOKABLE void showCalendarMonth(int year, int month);
     Q_INVOKABLE void showCalendarToday();
+    Q_INVOKABLE void revealCalendarDate(const QString &iso);
     Q_INVOKABLE QStringList calendarMonthNames() const;
     Q_INVOKABLE QVariantMap tableAt(const QString &text, int cursor) const;
     Q_INVOKABLE QVariantMap insertTableColumn(const QString &text, int cursor) const;

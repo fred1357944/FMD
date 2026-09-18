@@ -47,44 +47,13 @@ Item {
                 model: backend.workspaceTags
                 delegate: ToolButton {
                     required property var modelData
-                    text: modelData.name + " " + modelData.count
+                    text: "#" + modelData.name + " · " + modelData.count
                     checkable: true
                     checked: backend.cardTagFilters.indexOf(modelData.name) >= 0
                     font.family: "iA Writer Mono S"
                     font.pixelSize: win.scaledSize(10)
                     implicitHeight: win.scaledSize(26)
                     onClicked: backend.toggleCardTag(modelData.name)
-                }
-            }
-        }
-
-        Row {
-            Layout.fillWidth: true
-            spacing: 2
-            Repeater {
-                model: backend.activityHeatmap
-                delegate: Rectangle {
-                    required property var modelData
-                    width: Math.max(6, Math.floor((root.width - 24) / 112) )
-                    height: 10
-                    radius: 1
-                    color: {
-                        var lv = modelData.level
-                        if (lv >= 4) return "#1d4ed8"
-                        if (lv >= 3) return "#3b82f6"
-                        if (lv >= 2) return "#60a5fa"
-                        if (lv >= 1) return "#93c5fd"
-                        return win.darkMode ? "#2a2a2a" : "#e5e5e5"
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        ToolTip.visible: containsMouse
-                        ToolTip.text: modelData.date + " · " + modelData.count
-                        onClicked: backend.projectDateFilter =
-                                   (backend.projectDateFilter === modelData.date
-                                    ? "all" : modelData.date)
-                    }
                 }
             }
         }

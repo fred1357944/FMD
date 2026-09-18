@@ -54,7 +54,48 @@ Item {
             color: win.mutedColor
             font.family: "iA Writer Mono S"
             font.pixelSize: win.scaledSize(12)
-            text: "Drag a note onto another day to reschedule. Drop on Unscheduled to clear " + backend.dateField + ". Click to edit."
+            text: (backend.uiLanguage, backend.t("calendarHeatmapHelp"))
+        }
+
+        Item {
+            id: heat
+            visible: backend.workspaceFolderPath.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: 7 * (cell + gap) - gap
+            clip: true
+            readonly property int cell: Math.max(8, win.scaledSize(11))
+            readonly property int gap: 3
+
+            Repeater {
+                model: backend.activityHeatmap
+                delegate: Rectangle {
+                    required property int index
+                    required property var modelData
+                    width: heat.cell
+                    height: heat.cell
+                    radius: 2
+                    x: Math.floor(index / 7) * (heat.cell + heat.gap)
+                    y: (index % 7) * (heat.cell + heat.gap)
+                    opacity: modelData.future ? 0.18 : 1
+                    color: {
+                        var lv = modelData.level
+                        if (lv >= 4) return "#216e39"
+                        if (lv >= 3) return "#30a14e"
+                        if (lv >= 2) return "#40c463"
+                        if (lv >= 1) return "#9be9a8"
+                        return win.darkMode ? "#2a2a2a" : "#ebedf0"
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: !modelData.future
+                        hoverEnabled: true
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        ToolTip.visible: containsMouse
+                        ToolTip.text: modelData.date + " · " + modelData.count
+                        onClicked: backend.revealCalendarDate(modelData.date)
+                    }
+                }
+            }
         }
 
         RowLayout {

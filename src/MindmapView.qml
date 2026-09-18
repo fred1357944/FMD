@@ -187,6 +187,24 @@ Item {
         root.editingId = id
     }
 
+    function scrollToNode(id) {
+        var n = root.nodeById(id)
+        if (!n || !canvasFlick)
+            return
+        var targetX = n.x + n.w / 2 - canvasFlick.width / 2
+        var targetY = n.y + n.h / 2 - canvasFlick.height / 2
+        var maxX = Math.max(0, canvasFlick.contentWidth - canvasFlick.width)
+        var maxY = Math.max(0, canvasFlick.contentHeight - canvasFlick.height)
+        canvasFlick.contentX = Math.max(0, Math.min(targetX, maxX))
+        canvasFlick.contentY = Math.max(0, Math.min(targetY, maxY))
+    }
+
+    function selectAndReveal(id) {
+        root.finishEdit()
+        backend.mindmapSelectedId = id
+        Qt.callLater(function() { root.scrollToNode(id) })
+    }
+
     function commitEdit(id, text, restoreCanvasFocus) {
         if (root.editingId !== id)
             return
@@ -510,10 +528,7 @@ Item {
 
                         HoverHandler { id: hover }
                         TapHandler {
-                            onTapped: {
-                                root.finishEdit()
-                                backend.mindmapSelectedId = modelData.id
-                            }
+                            onTapped: root.selectAndReveal(modelData.id)
                             onDoubleTapped: {
                                 openDelay.stop()
                                 root.beginEdit(modelData.id)

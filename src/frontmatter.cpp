@@ -552,6 +552,17 @@ QStringList tagsFromValue(const QVariant &value) {
     return uniqueTags(tags);
 }
 
+static bool isHexColorHashtag(const QString &tag)
+{
+    if (tag.size() != 3 && tag.size() != 6)
+        return false;
+    for (const QChar ch : tag) {
+        if (!ch.isDigit() && (ch.toLower() < QLatin1Char('a') || ch.toLower() > QLatin1Char('f')))
+            return false;
+    }
+    return true;
+}
+
 QStringList hashtagsFromBody(const QString &body) {
     QStringList tags;
     const QStringList lines = body.split(QRegularExpression(QStringLiteral("\\r?\\n")));
@@ -566,8 +577,9 @@ QStringList hashtagsFromBody(const QString &body) {
         QRegularExpressionMatchIterator it = hashtagRe().globalMatch(line);
         while (it.hasNext()) {
             const QString tag = normalizeTag(it.next().captured(1));
-            if (!tag.isEmpty())
-                tags.append(tag);
+            if (tag.isEmpty() || isHexColorHashtag(tag))
+                continue;
+            tags.append(tag);
         }
     }
     return uniqueTags(tags);

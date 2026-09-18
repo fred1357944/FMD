@@ -4569,23 +4569,32 @@ QVariantList Backend::activityHeatmap() const
     }
     QVariantList days;
     const QDate today = QDate::currentDate();
-    const QDate start = today.addDays(-(16 * 7 - 1));
-    for (QDate d = start; d <= today; d = d.addDays(1)) {
+    QDate start = today.addDays(-(16 * 7 - 1));
+    while (start.dayOfWeek() != Qt::Sunday)
+        start = start.addDays(-1);
+    QDate end = today;
+    while (end.dayOfWeek() != Qt::Saturday)
+        end = end.addDays(1);
+    for (QDate d = start; d <= end; d = d.addDays(1)) {
         const QString iso = d.toString(Qt::ISODate);
-        const int count = counts.value(iso);
+        const int count = d > today ? 0 : counts.value(iso);
         int level = 0;
-        if (count >= 4)
-            level = 4;
-        else if (count >= 3)
-            level = 3;
-        else if (count >= 2)
-            level = 2;
-        else if (count >= 1)
-            level = 1;
+        if (d <= today) {
+            if (count >= 4)
+                level = 4;
+            else if (count >= 3)
+                level = 3;
+            else if (count >= 2)
+                level = 2;
+            else if (count >= 1)
+                level = 1;
+        }
         days.append(QVariantMap{
             {QStringLiteral("date"), iso},
             {QStringLiteral("count"), count},
             {QStringLiteral("level"), level},
+            {QStringLiteral("weekday"), d.dayOfWeek() % 7},
+            {QStringLiteral("future"), d > today},
         });
     }
     return days;
@@ -5997,6 +6006,14 @@ void Backend::stepCalendar(int monthDelta) {
 void Backend::showCalendarToday() {
     const QDate today = QDate::currentDate();
     showCalendarMonth(today.year(), today.month());
+}
+
+void Backend::revealCalendarDate(const QString &iso)
+{
+    const QDate day = QDate::fromString(iso.trimmed(), Qt::ISODate);
+    if (!day.isValid())
+        return;
+    showCalendarMonth(day.year(), day.month());
 }
 
 QStringList Backend::calendarMonthNames() const {

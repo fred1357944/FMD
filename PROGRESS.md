@@ -4,7 +4,7 @@
 
 ## 當前
 
-已裝 0.5.6：同一份簡報再開會關掉舊的 Vite／node。請再按一次「立刻開 Slidev」。
+已裝 0.5.7：熱力圖在日曆（週格）；分頁 編輯／表格／看板／日曆／智圖／卡片 對齊 ⌘1–6；智圖左側點一下會跳到該節點。請完全退出再開。
 
 花園／changelog 空站已 push 為 private：`andgreen-notes`、`fmd-site`。偏好設定裡把花園站資料夾指到 `/Users/laihongyi/Projects/andgreen-notes`。
 
@@ -19,6 +19,7 @@
 
 | 紀錄 ID | 狀態 | 做了什麼 | 證據／限制 |
 |---|---|---|---|
+| FMD-20260918-057 | 已安裝 | 0.5.7 熱力圖進日曆、分頁對齊 ⌘1–6、智圖左側跳轉 | Totals: 120 passed；`/Applications/FMD.app` 16:09:27；otool 無 Homebrew；熱力圖週日起算、size%7==0；hex 色碼不當標籤 |
 | FMD-20260918-056 | 已安裝 | 0.5.6 重開同一份 Slidev 時殺掉 npm+node 整組 | Totals: 120 passed；live `slidev-present` `ok=true url=http://127.0.0.1:3030/` 10.96s；舊 21424/21460 已死；listen `127.0.0.1:3030`；HTML title `FMD × Slidev 學習稿`；`/Applications/FMD.app` 15:55:43；otool 無 Homebrew |
 | FMD-20260918-055 | 已安裝 | 0.5.5 Slidev 空白首頁＋native deck 原地開；側欄麵包屑／上一層 | Totals: 119 passed；`/Applications/FMD.app` 15:39:13；otool 無 Homebrew；Vite 仍在外面；未載入 Obsidian JS |
 | FMD-20260918-054 | 已安裝 | 0.5.4 側欄資料夾 ▸／▾ 局部收合 | Totals: 117 passed；`/Applications/FMD.app` 15:16:22；otool 無 Homebrew |
