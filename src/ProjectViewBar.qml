@@ -101,6 +101,19 @@ ColumnLayout {
             onTextEdited: backend.projectKeywordFilter = text
         }
 
+        ToolButton {
+            objectName: "pinnedOnlyButton"
+            checkable: true
+            checked: backend.pinnedOnly
+            text: backend.pinnedOnly ? "★" : "☆"
+            implicitWidth: win.scaledSize(32)
+            implicitHeight: win.scaledSize(32)
+            font.pixelSize: win.scaledSize(14)
+            ToolTip.visible: hovered
+            ToolTip.text: (backend.uiLanguage, backend.t("pinnedOnlyTip"))
+            onClicked: backend.pinnedOnly = !backend.pinnedOnly
+        }
+
         ComboBox {
             id: tagFilterBox
             objectName: "projectTagFilter"

@@ -148,6 +148,7 @@ Item {
                                 }
 
                                 RowLayout {
+                                    id: cardStarRow
                                     width: parent.width
                                     Label {
                                         Layout.fillWidth: true
@@ -158,6 +159,7 @@ Item {
                                         font.pixelSize: win.scaledSize(10)
                                     }
                                     ToolButton {
+                                        z: 3
                                         text: modelData.pinned ? "★" : "☆"
                                         implicitWidth: win.scaledSize(28)
                                         implicitHeight: win.scaledSize(24)
@@ -167,8 +169,9 @@ Item {
                             }
 
                             MouseArea {
+                                z: 1
                                 anchors.fill: parent
-                                anchors.bottomMargin: 28
+                                anchors.bottomMargin: cardStarRow.height + 4
                                 onClicked: win.requestOpen(modelData.url)
                             }
                         }

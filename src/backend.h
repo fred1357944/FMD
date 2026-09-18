@@ -65,6 +65,7 @@ class Backend : public QObject {
     Q_PROPERTY(QString projectView READ projectView WRITE setProjectView NOTIFY projectViewChanged)
     Q_PROPERTY(QVariantList cardRecords READ cardRecords NOTIFY projectRecordsChanged)
     Q_PROPERTY(QStringList cardTagFilters READ cardTagFilters NOTIFY cardFiltersChanged)
+    Q_PROPERTY(bool pinnedOnly READ pinnedOnly WRITE setPinnedOnly NOTIFY projectFiltersChanged)
     Q_PROPERTY(QVariantList activityHeatmap READ activityHeatmap NOTIFY projectRecordsChanged)
     Q_PROPERTY(QVariantList workspaceNavFolders READ workspaceNavFolders NOTIFY workspaceTreeChanged)
     Q_PROPERTY(QVariantList workspaceNavFiles READ workspaceNavFiles NOTIFY workspaceNavChanged)
@@ -199,6 +200,8 @@ public:
     Q_INVOKABLE void clearCardTags();
     Q_INVOKABLE QUrl randomCardUrl() const;
     Q_INVOKABLE void togglePin(const QUrl &url);
+    bool pinnedOnly() const { return m_pinnedOnly; }
+    void setPinnedOnly(bool enabled);
     QVariantList activityHeatmap() const;
     QVariantList workspaceNavFolders() const;
     QVariantList workspaceNavFiles() const;
@@ -635,6 +638,7 @@ private:
     QVariantList m_inboxFiles;
     QString m_projectView = QStringLiteral("editor");
     QStringList m_cardTagFilters;
+    bool m_pinnedOnly = false;
     QString m_boardField;
     QString m_dateField;
     QVariantList m_projectRecords;

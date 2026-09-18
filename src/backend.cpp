@@ -4412,6 +4412,8 @@ void Backend::refreshProjectRecords() {
 
         const bool pinned = FrontMatter::isTruthy(document.fields.value(QStringLiteral("pin")))
             || FrontMatter::isTruthy(document.fields.value(QStringLiteral("shortcut")));
+        if (m_pinnedOnly && !pinned)
+            continue;
 
         records.append(QVariantMap{
             {QStringLiteral("url"), QUrl::fromLocalFile(info.absoluteFilePath())},
@@ -4546,6 +4548,15 @@ QUrl Backend::randomCardUrl() const
     return cards.at(index).toMap().value(QStringLiteral("url")).toUrl();
 }
 
+void Backend::setPinnedOnly(bool enabled)
+{
+    if (m_pinnedOnly == enabled)
+        return;
+    m_pinnedOnly = enabled;
+    emit projectFiltersChanged();
+    refreshProjectRecords();
+}
+
 void Backend::togglePin(const QUrl &url)
 {
     if (!url.isLocalFile())
@@ -4559,7 +4570,11 @@ void Backend::togglePin(const QUrl &url)
     const QString updated =
         FrontMatter::setField(text, QStringLiteral("pin"),
                               pinned ? QStringLiteral("false") : QStringLiteral("true"));
+    const bool currentDocument = m_document && url == m_fileUrl;
+    const bool wasModified = m_modified;
     applyNoteText(url, updated, true);
+    if (currentDocument && !wasModified && m_fileUrl.isLocalFile())
+        save();
 }
 
 QVariantList Backend::activityHeatmap() const

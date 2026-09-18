@@ -3473,6 +3473,13 @@ private slots:
                  QStringLiteral("Both"));
         backend.clearCardTags();
         QCOMPARE(backend.cardRecords().size(), 3);
+        backend.setPinnedOnly(true);
+        QCOMPARE(backend.cardRecords().size(), 1);
+        QCOMPARE(backend.cardRecords().first().toMap().value(QStringLiteral("title")).toString(),
+                 QStringLiteral("Both"));
+        QCOMPARE(backend.projectRecords().size(), 1);
+        backend.setPinnedOnly(false);
+        QCOMPARE(backend.cardRecords().size(), 3);
 
         backend.setSelectedWorkspacePath(directory.filePath(QStringLiteral("garden")));
         QCOMPARE(QDir(backend.selectedFolderPath()).absolutePath(),
