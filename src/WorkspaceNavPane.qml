@@ -79,13 +79,37 @@ ColumnLayout {
                         }
                         backend.selectedWorkspacePath = folderDelegate.fileEntry.path
                     }
+                    onDoubleClicked: {
+                        if (folderDelegate.fileEntry && folderDelegate.fileEntry.hasChildren)
+                            backend.toggleWorkspaceFolder(folderDelegate.fileEntry.path)
+                    }
                 }
                 Row {
                     anchors.fill: parent
-                    anchors.leftMargin: 6 + (folderDelegate.fileEntry
+                    anchors.leftMargin: 4 + (folderDelegate.fileEntry
                                              ? folderDelegate.fileEntry.depth * 12 : 0)
-                    anchors.rightMargin: 6
-                    spacing: 6
+                    anchors.rightMargin: 4
+                    spacing: 4
+                    Item {
+                        width: win.scaledSize(14)
+                        height: parent.height
+                        Label {
+                            anchors.centerIn: parent
+                            visible: folderDelegate.fileEntry && folderDelegate.fileEntry.hasChildren
+                            text: folderDelegate.fileEntry && folderDelegate.fileEntry.expanded ? "▾" : "▸"
+                            color: win.mutedColor
+                            font.family: "iA Writer Mono S"
+                            font.pixelSize: win.scaledSize(10)
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: folderDelegate.fileEntry && folderDelegate.fileEntry.hasChildren
+                            onClicked: function(mouse) {
+                                mouse.accepted = true
+                                backend.toggleWorkspaceFolder(folderDelegate.fileEntry.path)
+                            }
+                        }
+                    }
                     FileKindIcon {
                         width: win.scaledSize(14)
                         height: win.scaledSize(14)
@@ -94,7 +118,7 @@ ColumnLayout {
                         ink: folderDelegate.highlighted ? win.strongTextColor : win.mutedColor
                     }
                     Label {
-                        width: parent.width - win.scaledSize(20)
+                        width: parent.width - win.scaledSize(36)
                         height: parent.height
                         text: folderDelegate.fileEntry ? folderDelegate.fileEntry.name : ""
                         elide: Text.ElideMiddle

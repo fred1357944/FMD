@@ -3286,6 +3286,18 @@ private slots:
         QVERIFY(folderNames.contains(QStringLiteral("inner")));
         QCOMPARE(depths.value(QStringLiteral("inner")), 2);
 
+        backend.toggleWorkspaceFolder(directory.filePath(QStringLiteral("published")));
+        folderNames.clear();
+        for (const QVariant &item : backend.workspaceNavFolders())
+            folderNames.append(item.toMap().value(QStringLiteral("name")).toString());
+        QVERIFY(folderNames.contains(QStringLiteral("published")));
+        QVERIFY(!folderNames.contains(QStringLiteral("inner")));
+        backend.toggleWorkspaceFolder(directory.filePath(QStringLiteral("published")));
+        folderNames.clear();
+        for (const QVariant &item : backend.workspaceNavFolders())
+            folderNames.append(item.toMap().value(QStringLiteral("name")).toString());
+        QVERIFY(folderNames.contains(QStringLiteral("inner")));
+
         backend.setSelectedWorkspacePath(directory.filePath(QStringLiteral("published")));
         QStringList names;
         QStringList kinds;

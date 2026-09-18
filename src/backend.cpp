@@ -4035,7 +4035,6 @@ void Backend::toggleWorkspaceFolder(const QString &path)
     if (path.isEmpty() || !QDir(path).exists())
         return;
     const QString absolute = QDir(path).absolutePath();
-    setSelectedWorkspacePath(absolute);
     if (m_collapsedFolders.contains(absolute))
         m_collapsedFolders.removeAll(absolute);
     else
@@ -4504,6 +4503,38 @@ QVariantList Backend::workspaceNavFolders() const
     if (root.isEmpty())
         return folders;
     const QString rootAbs = QDir(root).absolutePath();
+    QStringList paths = m_workspaceFolderPaths;
+    std::sort(paths.begin(), paths.end(), [](const QString &left, const QString &right) {
+        return QString::compare(left, right, Qt::CaseInsensitive) < 0;
+    });
+    auto hasDescendantFolders = [&](const QString &abs) {
+        for (const QString &path : paths) {
+            const QString child = QDir(path).absolutePath();
+            if (child != abs && isPathUnderDirectory(child, abs))
+                return true;
+        }
+        return false;
+    };
+    auto ancestorCollapsed = [&](const QString &abs) {
+        if (abs == rootAbs)
+            return false;
+        if (m_collapsedFolders.contains(rootAbs))
+            return true;
+        QString dir = QFileInfo(abs).absolutePath();
+        while (!dir.isEmpty() && dir != QLatin1String("/")) {
+            const QString current = QDir(dir).absolutePath();
+            if (m_collapsedFolders.contains(current))
+                return true;
+            if (current == rootAbs)
+                break;
+            const QString parent = QFileInfo(current).absolutePath();
+            if (parent == current)
+                break;
+            dir = parent;
+        }
+        return false;
+    };
+
     folders.append(QVariantMap{
         {QStringLiteral("kind"), QStringLiteral("folder")},
         {QStringLiteral("name"), workspaceFolderName()},
@@ -4511,17 +4542,19 @@ QVariantList Backend::workspaceNavFolders() const
         {QStringLiteral("url"), QUrl::fromLocalFile(rootAbs)},
         {QStringLiteral("depth"), 0},
         {QStringLiteral("root"), true},
+        {QStringLiteral("hasChildren"), hasDescendantFolders(rootAbs) || !paths.isEmpty()},
+        {QStringLiteral("expanded"), !m_collapsedFolders.contains(rootAbs)},
     });
-    QStringList paths = m_workspaceFolderPaths;
-    std::sort(paths.begin(), paths.end(), [](const QString &left, const QString &right) {
-        return QString::compare(left, right, Qt::CaseInsensitive) < 0;
-    });
+    if (m_collapsedFolders.contains(rootAbs))
+        return folders;
     for (const QString &path : paths) {
         const QString abs = QDir(path).absolutePath();
         if (abs == rootAbs)
             continue;
         const QString rel = QDir::fromNativeSeparators(QDir(rootAbs).relativeFilePath(abs));
         if (rel.startsWith(QLatin1String("..")) || rel.isEmpty())
+            continue;
+        if (ancestorCollapsed(abs))
             continue;
         folders.append(QVariantMap{
             {QStringLiteral("kind"), QStringLiteral("folder")},
@@ -4530,6 +4563,8 @@ QVariantList Backend::workspaceNavFolders() const
             {QStringLiteral("url"), QUrl::fromLocalFile(abs)},
             {QStringLiteral("depth"), rel.count(QLatin1Char('/')) + 1},
             {QStringLiteral("root"), false},
+            {QStringLiteral("hasChildren"), hasDescendantFolders(abs)},
+            {QStringLiteral("expanded"), !m_collapsedFolders.contains(abs)},
         });
     }
     return folders;
