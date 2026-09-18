@@ -68,6 +68,8 @@ class Backend : public QObject {
     Q_PROPERTY(QVariantList activityHeatmap READ activityHeatmap NOTIFY projectRecordsChanged)
     Q_PROPERTY(QVariantList workspaceNavFolders READ workspaceNavFolders NOTIFY workspaceTreeChanged)
     Q_PROPERTY(QVariantList workspaceNavFiles READ workspaceNavFiles NOTIFY workspaceNavChanged)
+    Q_PROPERTY(QVariantList workspaceNavCrumbs READ workspaceNavCrumbs NOTIFY workspaceNavChanged)
+    Q_PROPERTY(bool workspaceNavCanGoUp READ workspaceNavCanGoUp NOTIFY workspaceNavChanged)
     Q_PROPERTY(QVariantList workspaceShortcuts READ workspaceShortcuts NOTIFY projectRecordsChanged)
     Q_PROPERTY(QVariantList projectRecords READ projectRecords NOTIFY projectRecordsChanged)
     Q_PROPERTY(QStringList projectFieldNames READ projectFieldNames NOTIFY projectRecordsChanged)
@@ -199,6 +201,9 @@ public:
     QVariantList activityHeatmap() const;
     QVariantList workspaceNavFolders() const;
     QVariantList workspaceNavFiles() const;
+    QVariantList workspaceNavCrumbs() const;
+    bool workspaceNavCanGoUp() const;
+    Q_INVOKABLE void selectParentWorkspaceFolder();
     QVariantList workspaceShortcuts() const;
     QVariantList projectRecords() const { return m_projectRecords; }
     QStringList projectFieldNames() const { return m_projectFieldNames; }
@@ -670,6 +675,8 @@ private:
     bool m_slidevBusy = false;
     bool m_slidevDryRun = false;
     bool m_slidevAborting = false;
+    bool m_slidevPresentInPlace = false;
+    bool m_cachedSlidevNote = false;
     QFileSystemWatcher m_fileWatcher;
     QFileSystemWatcher m_inboxWatcher;
     QFileSystemWatcher m_workspaceWatcher;

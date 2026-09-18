@@ -2902,6 +2902,50 @@ private slots:
         QVERIFY(!exported.contains(QStringLiteral("{layout: cover}")));
         QVERIFY(exported.contains(QStringLiteral("# Hello")));
         QVERIFY(!exported.contains(QStringLiteral("theme: default")));
+        QCOMPARE(CodeBlocks::slidevPreviewSlides(live).size(), 2);
+        QVERIFY(!exported.contains(QStringLiteral("---\n---\nlayout: cover")));
+    }
+
+    void nativeSlidevMarkdownIsDetectedAndNotGivenAnEmptyCoverSlide() {
+        const QString native = QStringLiteral(
+            "---\ntheme: seriph\nlayout: default\n---\n\n# 從拆解到縫合\n\n---\n\n## 大綱\n");
+        QVERIFY(CodeBlocks::isNativeSlidevMarkdown(native));
+        QVERIFY(!CodeBlocks::isNativeSlidevMarkdown(
+            QStringLiteral("---\nlayout: slides\n---\n\n# A\n\n## B\n")));
+        const QString fmd = QStringLiteral(
+            "---\ntitle: Talk\nlayout: slides\n---\n# Hello {layout: cover}\n\nbody\n");
+        const QString exported = CodeBlocks::slidevMarkdown(fmd);
+        QCOMPARE(CodeBlocks::slidevSlideCount(exported), 1);
+        QVERIFY(exported.contains(QStringLiteral("layout: cover")));
+        QVERIFY(!exported.contains(QStringLiteral("---\n---\nlayout: cover")));
+        QVERIFY(exported.contains(QStringLiteral("# Hello")));
+        QVERIFY(!CodeBlocks::isNativeSlidevMarkdown(
+            QStringLiteral("---\nlayout: post\npublish: true\n---\n\nHi\n\n---\n\nMore\n")));
+    }
+
+    void nativeSlidevFilePresentsInPlaceWithoutRewritingLayout() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString path = directory.filePath(QStringLiteral("slides.md"));
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write(QStringLiteral(
+                       "---\ntheme: seriph\nlayout: default\n---\n\n# 從拆解到縫合\n\n---\n\n## 大綱\n")
+                       .toUtf8());
+        file.close();
+        Backend backend;
+        backend.open(QUrl::fromLocalFile(path));
+        QVERIFY(backend.slidevNote());
+        const QVariantMap check = backend.validateSlidevDraft();
+        QCOMPARE(check.value(QStringLiteral("ok")).toBool(), true);
+        QCOMPARE(check.value(QStringLiteral("inPlace")).toBool(), true);
+        const QVariantMap published = backend.publishSlidevNow(true);
+        QCOMPARE(published.value(QStringLiteral("ok")).toBool(), true);
+        QCOMPARE(QFileInfo(published.value(QStringLiteral("path")).toString()).fileName(),
+                 QStringLiteral("slides.md"));
+        QCOMPARE(FrontMatter::displayValue(FrontMatter::parse(backend.editorPlainText())
+                                               .fields.value(QStringLiteral("layout"))),
+                 QStringLiteral("default"));
     }
 
     void sitePushDryRunReportsNothingToCommitOnEmptyRepo() {
@@ -3309,6 +3353,20 @@ private slots:
         QVERIFY(names.contains(QStringLiteral("a.md")));
         QCOMPARE(kinds.first(), QStringLiteral("folder"));
         QVERIFY(kinds.contains(QStringLiteral("markdown")));
+
+        backend.setSelectedWorkspacePath(directory.filePath(QStringLiteral("published/inner")));
+        QVERIFY(backend.workspaceNavCanGoUp());
+        QCOMPARE(backend.workspaceNavCrumbs().size(), 3);
+        QCOMPARE(backend.workspaceNavCrumbs().at(0).toMap().value(QStringLiteral("root")).toBool(),
+                 true);
+        QCOMPARE(backend.workspaceNavCrumbs().at(2).toMap().value(QStringLiteral("name")).toString(),
+                 QStringLiteral("inner"));
+        backend.selectParentWorkspaceFolder();
+        QCOMPARE(QDir(backend.selectedFolderPath()).dirName(), QStringLiteral("published"));
+        QCOMPARE(backend.workspaceNavCrumbs().size(), 2);
+        backend.selectParentWorkspaceFolder();
+        QVERIFY(!backend.workspaceNavCanGoUp());
+        QCOMPARE(backend.workspaceNavCrumbs().size(), 1);
     }
 
     void cardsViewCoverPinTagAndAndHeatmap() {

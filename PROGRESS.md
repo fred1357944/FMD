@@ -4,7 +4,7 @@
 
 ## 當前
 
-已裝 0.5.4：側欄資料夾可 ▸／▾ 局部收合（雙擊名稱也可）。請完全退出再開。
+已裝 0.5.5：立刻開 Slidev 不再空白首頁；現成 `slides.md` 可原地開；側欄有「← 上一層」與路徑。請完全退出再開。
 
 花園／changelog 空站已 push 為 private：`andgreen-notes`、`fmd-site`。偏好設定裡把花園站資料夾指到 `/Users/laihongyi/Projects/andgreen-notes`。
 
@@ -19,6 +19,7 @@
 
 | 紀錄 ID | 狀態 | 做了什麼 | 證據／限制 |
 |---|---|---|---|
+| FMD-20260918-055 | 已安裝 | 0.5.5 Slidev 空白首頁＋native deck 原地開；側欄麵包屑／上一層 | Totals: 119 passed；`/Applications/FMD.app` 15:39:13；otool 無 Homebrew；Vite 仍在外面；未載入 Obsidian JS |
 | FMD-20260918-054 | 已安裝 | 0.5.4 側欄資料夾 ▸／▾ 局部收合 | Totals: 117 passed；`/Applications/FMD.app` 15:16:22；otool 無 Homebrew |
 | FMD-20260918-052 | 已安裝 | 0.5.2 雙欄右欄列出子資料夾＋監看 Finder 新增 | Totals: 116 passed；`/Applications/FMD.app` 14:49:01；otool 無 Homebrew；無深度上限；origin `https://github.com/fred1357944/FMD` master 已 push，未推 omacom/omawrite |
 | FMD-20260918-050 | 已安裝 | 0.5.0 卡片牆＋雙欄側欄＋捷徑封面；Slidev 學習稿取代陽春標題頁 | Totals: 114 passed；`/Applications/FMD.app` 14:29:45；otool 無 Homebrew；未把 Vite 塞進 app；未載入 Obsidian JS；學習稿 PNG 溢出版測未在本輪逐張看 |

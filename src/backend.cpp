@@ -62,6 +62,9 @@ const QString dateFieldSetting = QStringLiteral("project/dateField");
 const QString statusChoicesSetting = QStringLiteral("project/statusChoices");
 const QString statusChoicesFolderSetting = QStringLiteral("project/statusChoicesFolder");
 
+bool slidevPresentInPlace(const QString &text, const QString &path);
+bool canPresentSlidev(const QString &text, const QString &path);
+
 QString statusChoicesKeyForFolder(const QString &folderPath) {
     const QString absolute = QDir::fromNativeSeparators(QDir(folderPath).absolutePath());
     if (absolute.isEmpty())
@@ -1313,7 +1316,7 @@ QString Backend::resolvedChangelogSiteFolder() const {
 }
 
 bool Backend::slidevNote() const {
-    return FrontMatter::isSlidevNote(FrontMatter::parse(editorPlainText()).fields);
+    return canPresentSlidev(editorPlainText(), currentFilePath());
 }
 
 QStringList Backend::propertyChoices(const QString &key) const {
@@ -1904,34 +1907,58 @@ QVariantMap Backend::writeSlidevDeck(const QString &markdown, const QString &sou
     return result;
 }
 
+bool slidevPresentInPlace(const QString &text, const QString &path)
+{
+    if (FrontMatter::isSlidevNote(FrontMatter::parse(text).fields))
+        return false;
+    if (QFileInfo(path).fileName().compare(QStringLiteral("slides.md"), Qt::CaseInsensitive) == 0)
+        return true;
+    return CodeBlocks::isNativeSlidevMarkdown(text);
+}
+
+bool canPresentSlidev(const QString &text, const QString &path)
+{
+    const FrontMatter::Document parsed = FrontMatter::parse(text);
+    if (FrontMatter::isTruthy(parsed.fields.value(QStringLiteral("draft"))))
+        return false;
+    if (FrontMatter::isSlidevNote(parsed.fields))
+        return true;
+    return slidevPresentInPlace(text, path);
+}
+
 QVariantMap Backend::validateSlidevDraft() const {
     const QString text = editorPlainText();
+    const QString path = currentFilePath();
     const FrontMatter::Document parsed = FrontMatter::parse(text);
-    if (!FrontMatter::isSlidevNote(parsed.fields)) {
+    if (!canPresentSlidev(text, path)) {
         const QString message = FrontMatter::isTruthy(parsed.fields.value(QStringLiteral("draft")))
             ? QStringLiteral("draft: true — not a Slidev deck.")
-            : QStringLiteral("Set layout: slides (or slidev: true) in properties first.");
+            : QStringLiteral("Set layout: slides, or open a Slidev slides.md.");
         QVariantMap result = emptySlidevResult(message);
         return result;
     }
-    bool hasHeading = false;
-    for (const QVariant &item : FrontMatter::headingOutline(text)) {
-        if (item.toMap().value(QStringLiteral("level")).toInt() <= 2) {
-            hasHeading = true;
-            break;
+    const bool inPlace = slidevPresentInPlace(text, path);
+    if (!inPlace) {
+        bool hasHeading = false;
+        for (const QVariant &item : FrontMatter::headingOutline(text)) {
+            if (item.toMap().value(QStringLiteral("level")).toInt() <= 2) {
+                hasHeading = true;
+                break;
+            }
         }
+        if (!hasHeading)
+            return emptySlidevResult(QStringLiteral("Add a # or ## heading so Slidev has at least one slide."));
     }
-    if (!hasHeading)
-        return emptySlidevResult(QStringLiteral("Add a # or ## heading so Slidev has at least one slide."));
-    const QString exported = CodeBlocks::slidevMarkdown(text);
+    const int slides = inPlace ? CodeBlocks::slidevSlideCount(text)
+                               : CodeBlocks::slidevSlideCount(CodeBlocks::slidevMarkdown(text));
     QVariantMap result;
     result.insert(QStringLiteral("ok"), true);
-    result.insert(QStringLiteral("slides"), CodeBlocks::slidevSlideCount(exported));
-    result.insert(QStringLiteral("path"), currentFilePath());
+    result.insert(QStringLiteral("slides"), slides);
+    result.insert(QStringLiteral("path"), path);
+    result.insert(QStringLiteral("inPlace"), inPlace);
     result.insert(QStringLiteral("url"), QString());
     result.insert(QStringLiteral("message"),
-                  QStringLiteral("%1 slides · will open Slidev in the browser").arg(
-                      result.value(QStringLiteral("slides")).toInt()));
+                  QStringLiteral("%1 slides · will open Slidev in the browser").arg(slides));
     result.insert(QStringLiteral("output"), result.value(QStringLiteral("message")));
     result.insert(QStringLiteral("dryRun"), false);
     return result;
@@ -1945,14 +1972,27 @@ QVariantMap Backend::publishSlidevNow(bool dryRun) {
         setStatus(check.value(QStringLiteral("message")).toString());
         return check;
     }
-    const QString folder = resolvedSlidesSiteFolder();
-    QVariantMap written = writeSlidevDeck(editorPlainText(), currentFilePath(), folder);
-    if (!written.value(QStringLiteral("ok")).toBool()) {
-        setStatus(written.value(QStringLiteral("message")).toString());
-        return written;
+    const QString text = editorPlainText();
+    const QString sourcePath = currentFilePath();
+    const bool inPlace = slidevPresentInPlace(text, sourcePath);
+    m_slidevPresentInPlace = inPlace;
+    QString folder = resolvedSlidesSiteFolder();
+    QVariantMap written;
+    if (inPlace) {
+        written.insert(QStringLiteral("ok"), true);
+        written.insert(QStringLiteral("path"), sourcePath);
+        written.insert(QStringLiteral("slides"), check.value(QStringLiteral("slides")));
+        written.insert(QStringLiteral("inPlace"), true);
+        folder = QFileInfo(sourcePath).absolutePath();
+    } else {
+        written = writeSlidevDeck(text, sourcePath, folder);
+        if (!written.value(QStringLiteral("ok")).toBool()) {
+            setStatus(written.value(QStringLiteral("message")).toString());
+            return written;
+        }
+        if (m_slidesSiteFolder.isEmpty())
+            setSlidesSiteFolder(folder);
     }
-    if (m_slidesSiteFolder.isEmpty())
-        setSlidesSiteFolder(folder);
 
     const QString dest = written.value(QStringLiteral("path")).toString();
     const QString binary = findSlidevPresentBinary();
@@ -2038,19 +2078,22 @@ void Backend::finishSlidevJob(const QVariantMap &result) {
     emit slidevBusyChanged();
 
     QVariantMap report = result;
-    if (result.value(QStringLiteral("ok")).toBool() && !m_slidevDryRun) {
-        const QString current = editorPlainText();
-        QString updated = FrontMatter::setField(current, QStringLiteral("status"),
-                                                QStringLiteral("sent"));
-        updated = FrontMatter::setField(updated, QStringLiteral("slidev"), QStringLiteral("true"));
-        if (FrontMatter::displayValue(FrontMatter::parse(updated).fields.value(QStringLiteral("layout")))
-                .trimmed().compare(QStringLiteral("slides"), Qt::CaseInsensitive)
-            != 0)
-            updated = FrontMatter::setField(updated, QStringLiteral("layout"),
-                                            QStringLiteral("slides"));
-        if (updated != current) {
-            replaceEditorRange(0, current.size(), updated);
-            save();
+    const bool ok = result.value(QStringLiteral("ok")).toBool();
+    if (ok && !m_slidevDryRun) {
+        if (!m_slidevPresentInPlace) {
+            const QString current = editorPlainText();
+            QString updated = FrontMatter::setField(current, QStringLiteral("status"),
+                                                    QStringLiteral("sent"));
+            updated = FrontMatter::setField(updated, QStringLiteral("slidev"), QStringLiteral("true"));
+            if (FrontMatter::displayValue(FrontMatter::parse(updated).fields.value(QStringLiteral("layout")))
+                    .trimmed().compare(QStringLiteral("slides"), Qt::CaseInsensitive)
+                != 0)
+                updated = FrontMatter::setField(updated, QStringLiteral("layout"),
+                                                QStringLiteral("slides"));
+            if (updated != current) {
+                replaceEditorRange(0, current.size(), updated);
+                save();
+            }
         }
         const QString url = result.value(QStringLiteral("url")).toString();
         if (!url.isEmpty()) {
@@ -2059,11 +2102,12 @@ void Backend::finishSlidevJob(const QVariantMap &result) {
         } else {
             setStatus(QStringLiteral("Slidev sent"));
         }
-    } else if (result.value(QStringLiteral("ok")).toBool()) {
+    } else if (ok) {
         setStatus(QStringLiteral("Slidev dry-run OK — not opened"));
     } else {
         setStatus(QStringLiteral("Slidev publish failed"));
     }
+    m_slidevPresentInPlace = false;
     emit slidevPublishFinished(report);
 }
 
@@ -4028,6 +4072,57 @@ void Backend::setSelectedWorkspacePath(const QString &path)
     m_selectedWorkspacePath = next;
     emit selectedWorkspacePathChanged();
     emit workspaceNavChanged();
+}
+
+QVariantList Backend::workspaceNavCrumbs() const
+{
+    QVariantList crumbs;
+    const QString root = workspaceFolderPath();
+    if (root.isEmpty())
+        return crumbs;
+    const QString rootAbs = QDir(root).absolutePath();
+    crumbs.append(QVariantMap{
+        {QStringLiteral("name"), workspaceFolderName()},
+        {QStringLiteral("path"), rootAbs},
+        {QStringLiteral("url"), QUrl::fromLocalFile(rootAbs)},
+        {QStringLiteral("root"), true},
+    });
+    const QString folder = QDir(selectedFolderPath()).absolutePath();
+    if (folder.isEmpty() || folder == rootAbs)
+        return crumbs;
+    if (!isPathUnderDirectory(folder, rootAbs))
+        return crumbs;
+    const QString rel = QDir::fromNativeSeparators(QDir(rootAbs).relativeFilePath(folder));
+    QString acc = rootAbs;
+    const QStringList parts = rel.split(QLatin1Char('/'), Qt::SkipEmptyParts);
+    for (const QString &part : parts) {
+        acc += QLatin1Char('/') + part;
+        crumbs.append(QVariantMap{
+            {QStringLiteral("name"), part},
+            {QStringLiteral("path"), acc},
+            {QStringLiteral("url"), QUrl::fromLocalFile(acc)},
+            {QStringLiteral("root"), false},
+        });
+    }
+    return crumbs;
+}
+
+bool Backend::workspaceNavCanGoUp() const
+{
+    const QString root = workspaceFolderPath();
+    if (root.isEmpty())
+        return false;
+    const QString folder = QDir(selectedFolderPath()).absolutePath();
+    return !folder.isEmpty() && folder != QDir(root).absolutePath()
+        && isPathUnderDirectory(folder, root);
+}
+
+void Backend::selectParentWorkspaceFolder()
+{
+    if (!workspaceNavCanGoUp())
+        return;
+    const QString folder = QDir(selectedFolderPath()).absolutePath();
+    setSelectedWorkspacePath(QFileInfo(folder).absolutePath());
 }
 
 void Backend::toggleWorkspaceFolder(const QString &path)
@@ -6333,6 +6428,11 @@ void Backend::updatePreviewDocument() {
     }
     if (m_previewProperties != properties) {
         m_previewProperties = properties;
+        emit previewPropertiesChanged();
+    }
+    const bool presentable = canPresentSlidev(source, currentFilePath());
+    if (presentable != m_cachedSlidevNote) {
+        m_cachedSlidevNote = presentable;
         emit previewPropertiesChanged();
     }
 

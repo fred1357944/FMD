@@ -42,6 +42,7 @@ QVariantMap tableMoveCell(const QString &text, int cursor, int delta);
 QVariantList bodyBlocks(const QString &markdown);
 QString slidevMarkdown(const QString &markdown);
 int slidevSlideCount(const QString &slidevMarkdown);
+bool isNativeSlidevMarkdown(const QString &markdown);
 QVariantList slidevPreviewSlides(const QString &markdown);
 
 } // namespace CodeBlocks

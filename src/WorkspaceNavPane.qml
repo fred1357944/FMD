@@ -41,13 +41,96 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
+        spacing: 4
+
+        ToolButton {
+            objectName: "workspaceNavGoUpButton"
+            text: "← " + (backend.uiLanguage, backend.t("navGoUp"))
+            enabled: backend.workspaceNavCanGoUp
+            implicitHeight: win.scaledSize(26)
+            font.family: "iA Writer Mono S"
+            font.pixelSize: win.scaledSize(11)
+            ToolTip.visible: hovered
+            ToolTip.text: (backend.uiLanguage, backend.t("navGoUp"))
+            onClicked: backend.selectParentWorkspaceFolder()
+        }
+
+        Flickable {
+            Layout.fillWidth: true
+            Layout.preferredHeight: win.scaledSize(26)
+            clip: true
+            contentWidth: crumbRow.implicitWidth
+            contentHeight: height
+            boundsBehavior: Flickable.StopAtBounds
+
+            Row {
+                id: crumbRow
+                spacing: 0
+                height: parent.height
+                Repeater {
+                    id: crumbRepeater
+                    model: backend.workspaceNavCrumbs
+                    Row {
+                        required property var modelData
+                        required property int index
+                        spacing: 0
+                        height: crumbRow.height
+                        Label {
+                            visible: index > 0
+                            text: " / "
+                            height: parent.height
+                            color: win.mutedColor
+                            font.family: "iA Writer Mono S"
+                            font.pixelSize: win.scaledSize(11)
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        Label {
+                            text: modelData && modelData.name ? modelData.name : ""
+                            height: parent.height
+                            color: index === crumbRepeater.count - 1
+                                   ? win.strongTextColor : win.mutedColor
+                            font.family: "iA Writer Mono S"
+                            font.pixelSize: win.scaledSize(11)
+                            font.bold: index === crumbRepeater.count - 1
+                            font.underline: index < crumbRepeater.count - 1
+                            verticalAlignment: Text.AlignVCenter
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: index < crumbRepeater.count - 1
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: if (modelData && modelData.path)
+                                    backend.selectedWorkspacePath = modelData.path
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
         Layout.fillHeight: true
         spacing: 4
+
+        ColumnLayout {
+            Layout.preferredWidth: Math.max(win.scaledSize(128), parent.width * 0.4)
+            Layout.fillHeight: true
+            spacing: 2
+
+            Label {
+                Layout.fillWidth: true
+                text: (backend.uiLanguage, backend.t("navFolders"))
+                color: win.mutedColor
+                font.family: "iA Writer Mono S"
+                font.pixelSize: win.scaledSize(10)
+                font.bold: true
+            }
 
         ListView {
             id: workspaceFolderSidebar
             objectName: "workspaceFolderSidebar"
-            Layout.preferredWidth: Math.max(win.scaledSize(96), parent.width * 0.38)
+            Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             model: backend.workspaceNavFolders
@@ -86,8 +169,8 @@ ColumnLayout {
                 }
                 Row {
                     anchors.fill: parent
-                    anchors.leftMargin: 4 + (folderDelegate.fileEntry
-                                             ? folderDelegate.fileEntry.depth * 12 : 0)
+                    anchors.leftMargin: 6 + (folderDelegate.fileEntry
+                                             ? folderDelegate.fileEntry.depth * 14 : 0)
                     anchors.rightMargin: 4
                     spacing: 4
                     Item {
@@ -159,12 +242,30 @@ ColumnLayout {
                 }
             }
         }
+        }
 
         Rectangle {
             Layout.fillHeight: true
             implicitWidth: 1
             color: win.panelBorderColor
         }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 2
+
+            Label {
+                Layout.fillWidth: true
+                text: (backend.uiLanguage, backend.t("navThisFolder"))
+                      + (workspaceSidebar.count > 0
+                         ? ("  ·  " + workspaceSidebar.count)
+                         : "")
+                color: win.mutedColor
+                font.family: "iA Writer Mono S"
+                font.pixelSize: win.scaledSize(10)
+                font.bold: true
+            }
 
         ListView {
             id: workspaceSidebar
@@ -174,11 +275,49 @@ ColumnLayout {
             clip: true
             model: backend.workspaceNavFiles
             spacing: 1
-            visible: count > 0
             currentIndex: -1
             highlightFollowsCurrentItem: false
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+            header: Item {
+                width: workspaceSidebar.width
+                height: backend.workspaceNavCanGoUp ? win.scaledSize(32) : 0
+                visible: backend.workspaceNavCanGoUp
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.bottomMargin: 1
+                    radius: 6
+                    color: "transparent"
+                    border.color: win.panelBorderColor
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: backend.workspaceNavCanGoUp
+                    onClicked: backend.selectParentWorkspaceFolder()
+                }
+                Row {
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    spacing: 6
+                    Label {
+                        height: parent.height
+                        text: "←"
+                        color: win.mutedColor
+                        font.family: "iA Writer Mono S"
+                        font.pixelSize: win.scaledSize(12)
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    Label {
+                        height: parent.height
+                        text: (backend.uiLanguage, backend.t("navGoUp"))
+                        color: win.strongTextColor
+                        font.family: "iA Writer Mono S"
+                        font.pixelSize: win.scaledSize(12)
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
 
             delegate: ItemDelegate {
                 id: fileDelegate
@@ -260,8 +399,8 @@ ColumnLayout {
                     }
 
                     Label {
-                        width: parent.width - win.scaledSize(fileDelegate.isMarkdown
-                                                             || fileDelegate.isFolder ? 22 : 52)
+                        width: parent.width - win.scaledSize(fileDelegate.isFolder ? 36
+                                                             : (fileDelegate.isMarkdown ? 22 : 52))
                         height: parent.height
                         text: fileDelegate.fileEntry
                               ? (fileDelegate.isFolder
@@ -275,6 +414,18 @@ ColumnLayout {
                         color: win.strongTextColor
                         font.family: "iA Writer Mono S"
                         font.pixelSize: win.scaledSize(12)
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    Label {
+                        visible: fileDelegate.isFolder
+                        width: visible ? win.scaledSize(14) : 0
+                        height: parent.height
+                        text: "›"
+                        color: win.mutedColor
+                        font.family: "iA Writer Mono S"
+                        font.pixelSize: win.scaledSize(14)
+                        horizontalAlignment: Text.AlignRight
                         verticalAlignment: Text.AlignVCenter
                     }
 
@@ -372,20 +523,21 @@ ColumnLayout {
                 }
             }
         }
-    }
 
-    Label {
-        Layout.fillWidth: true
-        Layout.fillHeight: workspaceSidebar.count === 0
-        wrapMode: Text.Wrap
-        text: backend.tagFilter.length > 0
-            ? "No notes tagged #" + backend.tagFilter + "."
-            : (backend.workspaceFolderPath.length > 0
-                ? "No Markdown files or folders in this folder."
-                : (backend.uiLanguage, backend.t("openFolderHint")))
-        color: win.mutedColor
-        font.family: "iA Writer Mono S"
-        font.pixelSize: win.scaledSize(12)
-        visible: workspaceSidebar.count === 0
+            Label {
+                Layout.fillWidth: true
+                Layout.fillHeight: workspaceSidebar.count === 0
+                wrapMode: Text.Wrap
+                text: backend.tagFilter.length > 0
+                    ? "No notes tagged #" + backend.tagFilter + "."
+                    : (backend.workspaceFolderPath.length > 0
+                        ? (backend.uiLanguage, backend.t("navEmptyFolder"))
+                        : (backend.uiLanguage, backend.t("openFolderHint")))
+                color: win.mutedColor
+                font.family: "iA Writer Mono S"
+                font.pixelSize: win.scaledSize(12)
+                visible: workspaceSidebar.count === 0
+            }
+        }
     }
 }

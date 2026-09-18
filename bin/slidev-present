@@ -107,26 +107,41 @@ case "${cmd}" in
       exit 1
     fi
     file="$(cd "$(dirname "${file}")" && pwd)/$(basename "${file}")"
-    url="http://localhost:${port}/"
-    log "file=${file}"
-    log "port=${port}"
     if [[ "${dry}" == "1" ]]; then
+      url="http://localhost:${port}/"
+      log "file=${file}"
+      log "port=${port}"
       log "DRY-RUN"
       log "ok=true"
       log "url=${url}"
       log "dryRun=true"
       exit 0
     fi
+    src_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.src"
+    pid_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.pid"
     if port_in_use "${port}"; then
-      log "warn: port ${port} already listening; reusing"
-      if command -v open >/dev/null 2>&1; then
-        open "${url}" >/dev/null 2>&1 || true
+      prev="$(cat "${src_file}" 2>/dev/null || true)"
+      if [[ "${prev}" == "${file}" ]]; then
+        old_pid="$(cat "${pid_file}" 2>/dev/null || true)"
+        if [[ -n "${old_pid}" ]]; then
+          kill "${old_pid}" 2>/dev/null || true
+          n=0
+          while port_in_use "${port}" && [[ "${n}" -lt 20 ]]; do
+            sleep 0.2
+            n=$((n + 1))
+          done
+        fi
       fi
-      log "ok=true"
-      log "url=${url}"
-      log "reused=true"
-      exit 0
+      while port_in_use "${port}"; do
+        port=$((port + 1))
+      done
+      src_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.src"
+      pid_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.pid"
     fi
+    url="http://localhost:${port}/"
+    log "file=${file}"
+    log "port=${port}"
+    printf '%s\n' "${file}" >"${src_file}"
     npx_bin="$(find_npx)" || {
       log "error: npx not found. Install Node, or put npx on PATH."
       log "ok=false"

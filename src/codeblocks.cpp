@@ -1038,22 +1038,39 @@ QString slidevMarkdown(const QString &markdown) {
         out += QStringLiteral("colorSchema: ") + colorSchema + QLatin1Char('\n');
     if (!title.isEmpty())
         out += QStringLiteral("title: ") + slidevYamlScalar(title) + QLatin1Char('\n');
+    if (!layouts.isEmpty() && !layouts.at(0).isEmpty())
+        out += QStringLiteral("layout: ") + layouts.at(0) + QLatin1Char('\n');
     out += QStringLiteral("highlighter: shiki\nmdc: true\n---\n\n");
     for (int i = 0; i < slides.size(); ++i) {
-        if (i > 0)
+        if (i > 0) {
             out += QStringLiteral("\n\n---\n");
-        if (!layouts.at(i).isEmpty()) {
-            if (i == 0)
-                out += QStringLiteral("---\n");
-            out += QStringLiteral("layout: ") + layouts.at(i) + QStringLiteral("\n---\n\n");
-        } else if (i > 0) {
-            out += QLatin1Char('\n');
+            if (!layouts.at(i).isEmpty())
+                out += QStringLiteral("layout: ") + layouts.at(i) + QStringLiteral("\n---\n\n");
+            else
+                out += QLatin1Char('\n');
         }
         out += slides.at(i);
     }
     if (!out.endsWith(QLatin1Char('\n')))
         out.append(QLatin1Char('\n'));
     return out;
+}
+
+bool isNativeSlidevMarkdown(const QString &markdown) {
+    const FrontMatter::Document document = FrontMatter::parse(markdown);
+    if (FrontMatter::isSlidevNote(document.fields)
+            || FrontMatter::isGardenPublishable(document.fields)
+            || FrontMatter::isThreadsPost(document.fields))
+        return false;
+    bool inFence = false;
+    int separators = 0;
+    for (const QString &line : document.body.split(QLatin1Char('\n'))) {
+        if (line.trimmed().startsWith(QStringLiteral("```")))
+            inFence = !inFence;
+        if (!inFence && line.trimmed() == QLatin1String("---"))
+            ++separators;
+    }
+    return separators >= 1;
 }
 
 int slidevSlideCount(const QString &markdown) {
