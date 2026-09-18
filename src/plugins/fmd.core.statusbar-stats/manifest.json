@@ -1,0 +1,11 @@
+{
+  "id": "fmd.core.statusbar-stats",
+  "name": "Status bar stats",
+  "version": "0.1.0",
+  "minAppVersion": "0.1.0",
+  "author": "FMD",
+  "authorUrl": "https://github.com/fred1357944/FMD",
+  "description": "Shows word/char count in the footer via the plugin API.",
+  "main": "main.js",
+  "permissions": ["editor.read", "ui.statusbar"]
+}

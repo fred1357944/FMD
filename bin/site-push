@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# FMD's Threads-schedule analog for garden / changelog sites.
+# Copies are done in the app; this script only git add/commit/push.
+# Never stores GitHub tokens. Uses the user's existing git credentials.
+set -euo pipefail
+
+export GIT_TERMINAL_PROMPT=0
+export GIT_OPTIONAL_LOCKS=0
+export PATH="/opt/homebrew/bin:/usr/local/bin:${HOME}/bin:${PATH}"
+
+usage() {
+  cat <<'EOF'
+usage: site-push --repo DIR [--paths PATH[,PATH...]] [--message TEXT] [--dry-run]
+EOF
+}
+
+log() { printf '%s\n' "$*"; }
+
+repo=""
+paths="content"
+message="Publish from FMD"
+dry="0"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --repo) repo="${2:-}"; shift 2 ;;
+    --paths) paths="${2:-content}"; shift 2 ;;
+    --message) message="${2:-Publish from FMD}"; shift 2 ;;
+    --dry-run) dry="1"; shift ;;
+    -h|--help|help) usage; exit 0 ;;
+    *) log "error: unknown argument $1"; usage; exit 1 ;;
+  esac
+done
+
+if [[ -z "${repo}" || ! -d "${repo}/.git" ]]; then
+  log "error: not a git repo: ${repo}"
+  log "ok=false"
+  exit 1
+fi
+
+repo="$(cd "${repo}" && pwd)"
+cd "${repo}"
+
+IFS=',' read -r -a path_list <<< "${paths}"
+add_args=()
+for p in "${path_list[@]}"; do
+  p="${p#"${p%%[![:space:]]*}"}"
+  p="${p%"${p##*[![:space:]]}"}"
+  [[ -z "${p}" ]] && continue
+  add_args+=("${p}")
+done
+if [[ ${#add_args[@]} -eq 0 ]]; then
+  add_args=(content)
+fi
+
+if [[ "${dry}" == "1" ]]; then
+  log "DRY-RUN"
+  log "dryRun=true"
+  log "ok=true"
+  log "repo=${repo}"
+  if [[ -z "$(git status --porcelain -- "${add_args[@]}")" ]]; then
+    log "noop=true"
+    log "message=nothing to commit"
+  else
+    log "noop=false"
+    git status --porcelain -- "${add_args[@]}" | while IFS= read -r line; do log "stat=${line}"; done
+  fi
+  exit 0
+fi
+
+git add -- "${add_args[@]}"
+
+if git diff --cached --quiet; then
+  log "noop=true"
+  log "ok=true"
+  log "message=nothing to commit"
+  exit 0
+fi
+
+if ! git commit -m "${message}" >/tmp/fmd-site-push-commit.log 2>&1; then
+  log "error: git commit failed"
+  log "ok=false"
+  cat /tmp/fmd-site-push-commit.log
+  exit 1
+fi
+
+if ! git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+  log "error: no upstream remote; set origin and try again"
+  log "ok=false"
+  exit 1
+fi
+
+if ! git push >/tmp/fmd-site-push-push.log 2>&1; then
+  log "error: git push failed"
+  log "ok=false"
+  cat /tmp/fmd-site-push-push.log
+  exit 1
+fi
+
+log "ok=true"
+log "repo=${repo}"
+log "pushed=true"
+exit 0

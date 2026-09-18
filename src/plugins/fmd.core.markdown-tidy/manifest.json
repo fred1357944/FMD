@@ -1,0 +1,11 @@
+{
+  "id": "fmd.core.markdown-tidy",
+  "name": "Markdown tidy",
+  "version": "0.1.0",
+  "minAppVersion": "0.1.0",
+  "author": "FMD",
+  "authorUrl": "https://github.com/fred1357944/FMD",
+  "description": "Strip trailing spaces, collapse extra blank lines, and end the file with one newline.",
+  "main": "main.js",
+  "permissions": ["editor.read", "editor.write", "commands.register"]
+}

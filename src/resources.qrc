@@ -4,12 +4,42 @@
         <file alias="SearchIconButton.qml">SearchIconButton.qml</file>
         <file alias="FooterIconButton.qml">FooterIconButton.qml</file>
         <file alias="SquareDialogButton.qml">SquareDialogButton.qml</file>
+        <file alias="PaneButton.qml">PaneButton.qml</file>
+        <file alias="CommandPalette.qml">CommandPalette.qml</file>
+        <file alias="PluginsPane.qml">PluginsPane.qml</file>
+        <file alias="HotkeysPane.qml">HotkeysPane.qml</file>
+        <file alias="SlashMenu.qml">SlashMenu.qml</file>
+        <file alias="LanguagePicker.qml">LanguagePicker.qml</file>
+        <file alias="TemplatePicker.qml">TemplatePicker.qml</file>
+        <file alias="CodePreviewCard.qml">CodePreviewCard.qml</file>
+        <file alias="OutlinePane.qml">OutlinePane.qml</file>
+        <file alias="ThreadsPreview.qml">ThreadsPreview.qml</file>
+        <file alias="SlidePreview.qml">SlidePreview.qml</file>
         <file alias="UnsavedChangesDialog.qml">UnsavedChangesDialog.qml</file>
         <file alias="ExternalChangeDialog.qml">ExternalChangeDialog.qml</file>
         <file alias="EditorMutations.js">EditorMutations.js</file>
+        <file alias="ProjectViewBar.qml">ProjectViewBar.qml</file>
+        <file alias="PropertiesBar.qml">PropertiesBar.qml</file>
+        <file alias="ProjectTableView.qml">ProjectTableView.qml</file>
+        <file alias="ProjectBoardView.qml">ProjectBoardView.qml</file>
+        <file alias="ProjectCardsView.qml">ProjectCardsView.qml</file>
+        <file alias="WorkspaceNavPane.qml">WorkspaceNavPane.qml</file>
+        <file alias="ProjectCalendarView.qml">ProjectCalendarView.qml</file>
+        <file alias="MindmapView.qml">MindmapView.qml</file>
+        <file alias="CardDragLayer.qml">CardDragLayer.qml</file>
         <file alias="fonts/iAWriterMonoS-Regular.ttf">../fonts/iAWriterMonoS-Regular.ttf</file>
         <file alias="fonts/iAWriterMonoS-Italic.ttf">../fonts/iAWriterMonoS-Italic.ttf</file>
         <file alias="fonts/iAWriterMonoS-Bold.ttf">../fonts/iAWriterMonoS-Bold.ttf</file>
         <file alias="fonts/iAWriterMonoS-BoldItalic.ttf">../fonts/iAWriterMonoS-BoldItalic.ttf</file>
+    </qresource>
+    <qresource prefix="/plugins">
+        <file alias="fmd.core.statusbar-stats/manifest.json">plugins/fmd.core.statusbar-stats/manifest.json</file>
+        <file alias="fmd.core.statusbar-stats/main.js">plugins/fmd.core.statusbar-stats/main.js</file>
+        <file alias="fmd.core.markdown-tidy/manifest.json">plugins/fmd.core.markdown-tidy/manifest.json</file>
+        <file alias="fmd.core.markdown-tidy/main.js">plugins/fmd.core.markdown-tidy/main.js</file>
+    </qresource>
+    <qresource prefix="/community-plugins">
+        <file alias="fmd.community.vault-changelog/manifest.json">plugins/fmd.community.vault-changelog/manifest.json</file>
+        <file alias="fmd.community.vault-changelog/main.js">plugins/fmd.community.vault-changelog/main.js</file>
     </qresource>
 </RCC>

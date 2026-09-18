@@ -1,0 +1,5 @@
+/* Optional plugin styles. Loaded when the host supports plugin CSS. */
+
+.fmd-sample-plugin-notice {
+  /* reserved for future host-injected UI */
+}

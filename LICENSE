@@ -1,6 +1,12 @@
 MIT License
 
+Copyright (c) 2026 Hung Yi Lai (fred1357944)
+
+Portions derived from omawrite
 Copyright (c) 2026 David Heinemeier Hansson
+https://github.com/omacom-io/omawrite
+
+Thanks to DHH and omacom for the original writing app.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

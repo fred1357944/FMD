@@ -1,0 +1,16 @@
+{
+  "id": "sample-plugin",
+  "name": "Sample Plugin",
+  "version": "0.1.0",
+  "minAppVersion": "0.1.0",
+  "description": "Demonstrates FMD plugin API basics (commands, status bar, settings).",
+  "author": "Fred Lai",
+  "authorUrl": "https://github.com/fred1357944",
+  "fundingUrl": "",
+  "main": "main.js",
+  "permissions": [
+    "editor.read",
+    "ui.statusbar",
+    "commands.register"
+  ]
+}

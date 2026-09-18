@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+# FMD's Threads-schedule analog for Slidev.
+# Starts @slidev/cli outside FMD.app. Never embed Vite in the Qt binary.
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:${HOME}/bin:${PATH}"
+if [[ -z "${NVM_DIR:-}" ]]; then
+  export NVM_DIR="${HOME}/.nvm"
+fi
+if [[ -s "${NVM_DIR}/nvm.sh" ]]; then
+  # shellcheck disable=SC1090
+  . "${NVM_DIR}/nvm.sh"
+fi
+
+usage() {
+  cat <<'EOF'
+usage: slidev-present validate <slides.md>
+       slidev-present present <slides.md> [--port N] [--dry-run]
+EOF
+}
+
+log() { printf '%s\n' "$*"; }
+
+find_npx() {
+  if command -v npx >/dev/null 2>&1; then
+    command -v npx
+    return
+  fi
+  local nvm_npx
+  nvm_npx="$(ls -d "${HOME}"/.nvm/versions/node/*/bin/npx 2>/dev/null | tail -n 1 || true)"
+  if [[ -n "${nvm_npx}" && -x "${nvm_npx}" ]]; then
+    printf '%s\n' "${nvm_npx}"
+    return
+  fi
+  return 1
+}
+
+port_in_use() {
+  local port="$1"
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
+http_ready() {
+  local port="$1"
+  command -v curl >/dev/null 2>&1 || return 1
+  curl -fsS -o /dev/null --max-time 1 "http://127.0.0.1:${port}/" 2>/dev/null && return 0
+  curl -fsS -o /dev/null --max-time 1 "http://localhost:${port}/" 2>/dev/null && return 0
+  curl -fsS -o /dev/null --max-time 1 "http://[::1]:${port}/" 2>/dev/null && return 0
+  return 1
+}
+
+wait_for_http() {
+  local port="$1"
+  local pid_file="$2"
+  local n=0
+  while [[ "${n}" -lt 90 ]]; do
+    if [[ -n "${pid_file}" && -f "${pid_file}" ]]; then
+      local pid
+      pid="$(cat "${pid_file}" 2>/dev/null || true)"
+      if [[ -n "${pid}" ]] && ! kill -0 "${pid}" 2>/dev/null; then
+        return 2
+      fi
+    fi
+    if http_ready "${port}"; then
+      return 0
+    fi
+    sleep 1
+    n=$((n + 1))
+  done
+  return 1
+}
+
+cmd="${1:-}"
+shift || true
+case "${cmd}" in
+  validate)
+    file="${1:-}"
+    if [[ -z "${file}" || ! -f "${file}" ]]; then
+      log "error: slides file not found"
+      log "ok=false"
+      exit 1
+    fi
+    log "ok=true"
+    log "file=${file}"
+    exit 0
+    ;;
+  present)
+    file=""
+    port="3030"
+    dry="0"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --port) port="${2:-3030}"; shift 2 ;;
+        --dry-run) dry="1"; shift ;;
+        --) shift; break ;;
+        -*) log "error: unknown flag $1"; exit 1 ;;
+        *) file="$1"; shift ;;
+      esac
+    done
+    if [[ -z "${file}" || ! -f "${file}" ]]; then
+      log "error: slides file not found"
+      log "ok=false"
+      exit 1
+    fi
+    file="$(cd "$(dirname "${file}")" && pwd)/$(basename "${file}")"
+    url="http://localhost:${port}/"
+    log "file=${file}"
+    log "port=${port}"
+    if [[ "${dry}" == "1" ]]; then
+      log "DRY-RUN"
+      log "ok=true"
+      log "url=${url}"
+      log "dryRun=true"
+      exit 0
+    fi
+    if port_in_use "${port}"; then
+      log "warn: port ${port} already listening; reusing"
+      if command -v open >/dev/null 2>&1; then
+        open "${url}" >/dev/null 2>&1 || true
+      fi
+      log "ok=true"
+      log "url=${url}"
+      log "reused=true"
+      exit 0
+    fi
+    npx_bin="$(find_npx)" || {
+      log "error: npx not found. Install Node, or put npx on PATH."
+      log "ok=false"
+      exit 1
+    }
+    workdir="$(cd "$(dirname "${file}")" && pwd)"
+    probe="${workdir}"
+    while [[ "${probe}" != "/" ]]; do
+      if [[ -f "${probe}/package.json" ]]; then
+        workdir="${probe}"
+        break
+      fi
+      probe="$(dirname "${probe}")"
+    done
+    log_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.log"
+    pid_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.pid"
+    if [[ ! -d "${workdir}/node_modules/@slidev/theme-default" ]]; then
+      log "installing=@slidev/theme-default"
+      (
+        cd "${workdir}"
+        npm install --no-fund --no-audit --save-dev @slidev/theme-default
+      ) >>"${log_file}" 2>&1 || {
+        log "error: could not install @slidev/theme-default"
+        tail -n 20 "${log_file}" | while IFS= read -r line; do log "slidev: ${line}"; done
+        log "ok=false"
+        exit 1
+      }
+    fi
+    (
+      cd "${workdir}"
+      exec "${npx_bin}" --yes @slidev/cli "${file}" --port "${port}" --open
+    ) >"${log_file}" 2>&1 &
+    echo $! >"${pid_file}"
+    wait_rc=0
+    wait_for_http "${port}" "${pid_file}" || wait_rc=$?
+    if [[ "${wait_rc}" -ne 0 ]]; then
+      if [[ "${wait_rc}" -eq 2 ]]; then
+        log "error: Slidev process exited before it was ready"
+      else
+        log "error: Slidev did not become ready on ${url}"
+      fi
+      if [[ -f "${log_file}" ]]; then
+        log "log=${log_file}"
+        tail -n 40 "${log_file}" | while IFS= read -r line; do
+          log "slidev: ${line}"
+        done
+      fi
+      log "ok=false"
+      exit 1
+    fi
+    log "ok=true"
+    log "url=${url}"
+    log "pid=$(cat "${pid_file}")"
+    exit 0
+    ;;
+  -h|--help|help|"")
+    usage
+    exit 0
+    ;;
+  *)
+    log "error: unknown command ${cmd}"
+    usage
+    exit 1
+    ;;
+esac

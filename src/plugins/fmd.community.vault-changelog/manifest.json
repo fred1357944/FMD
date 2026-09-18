@@ -1,0 +1,11 @@
+{
+  "id": "fmd.community.vault-changelog",
+  "name": "Vault changelog",
+  "version": "0.1.0",
+  "minAppVersion": "0.1.0",
+  "author": "FMD",
+  "authorUrl": "https://github.com/fred1357944/FMD",
+  "description": "Append a line to CHANGELOG.md in the current project each time you save a note.",
+  "main": "main.js",
+  "permissions": ["vault.read", "vault.write"]
+}

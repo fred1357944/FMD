@@ -1,0 +1,52 @@
+#!/usr/bin/env sh
+# Copy the just-built fmd into /Applications/FMD.app and retarget
+# Homebrew Qt links to the frameworks already inside the bundle.
+# Do not drop a raw qmake binary into the app — Finder will fail to open it.
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+APP="/Applications/FMD.app"
+BIN="$APP/Contents/MacOS/fmd"
+SRC="$ROOT/build-macos/fmd.app/Contents/MacOS/fmd"
+
+if [ ! -x "$SRC" ]; then
+  echo "missing $SRC — build first (qmake fmd.pro in build-macos)" >&2
+  exit 1
+fi
+if [ ! -d "$APP/Contents/Frameworks/QtCore.framework" ]; then
+  echo "$APP is not a self-contained Qt bundle" >&2
+  exit 1
+fi
+
+cp "$SRC" "$BIN"
+chmod +x "$BIN"
+
+otool -L "$BIN" | awk '/\/opt\/homebrew\/.*\.framework/ {print $1}' | while read -r dep; do
+  name=$(printf '%s' "$dep" | sed -E 's|.*/(Qt[^/]+)\.framework/.*|\1|')
+  new="@executable_path/../Frameworks/${name}.framework/Versions/A/${name}"
+  fw="$APP/Contents/Frameworks/${name}.framework/Versions/A/${name}"
+  if [ ! -e "$fw" ]; then
+    echo "missing bundled $name" >&2
+    exit 1
+  fi
+  install_name_tool -change "$dep" "$new" "$BIN"
+done
+
+if otool -l "$BIN" | grep -q '/opt/homebrew/lib'; then
+  install_name_tool -delete_rpath /opt/homebrew/lib "$BIN" || true
+fi
+
+if otool -L "$BIN" | grep -q /opt/homebrew; then
+  echo "still linked to Homebrew:" >&2
+  otool -L "$BIN" | grep /opt/homebrew >&2
+  exit 1
+fi
+
+codesign --force --sign - --timestamp=none --deep "$APP" >/dev/null
+
+mkdir -p "$HOME/bin"
+chmod +x "$ROOT/bin/site-push" "$ROOT/bin/slidev-present" 2>/dev/null || true
+ln -sf "$ROOT/bin/site-push" "$HOME/bin/site-push"
+ln -sf "$ROOT/bin/slidev-present" "$HOME/bin/slidev-present"
+
+echo "installed $BIN"

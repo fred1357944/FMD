@@ -11,24 +11,30 @@
 #include <QFile>
 
 #include "backend.h"
+#include "pluginhost.h"
 #include "systemtheme.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("omawrite"));
-    app.setDesktopFileName(QStringLiteral("omawrite"));
-    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("omawrite")));
+    app.setApplicationName(QStringLiteral("fmd"));
+    app.setApplicationDisplayName(QStringLiteral("FMD"));
+    app.setDesktopFileName(QStringLiteral("fmd"));
+    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("fmd")));
 
     QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/iAWriterMonoS-Regular.ttf"));
     QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/iAWriterMonoS-Italic.ttf"));
     QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/iAWriterMonoS-Bold.ttf"));
     QFontDatabase::addApplicationFont(QStringLiteral(":/fonts/iAWriterMonoS-BoldItalic.ttf"));
-    app.setOrganizationName(QStringLiteral("Omacom"));
-    app.setOrganizationDomain(QStringLiteral("omacom.io"));
+    app.setOrganizationName(QStringLiteral("Hung Yi Lai"));
+    app.setOrganizationDomain(QStringLiteral("github.com/fred1357944"));
 
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
     Backend backend(&app);
+    PluginHost pluginHost(&backend);
+    pluginHost.loadBuiltinAndUserPlugins();
+    if (!backend.workspaceFolderPath().isEmpty())
+        pluginHost.loadWorkspacePlugins(backend.workspaceFolderPath());
     SystemTheme systemTheme(&app);
     backend.setDarkMode(systemTheme.darkMode());
     QObject::connect(&systemTheme, &SystemTheme::darkModeChanged, &backend,
@@ -61,10 +67,11 @@ int main(int argc, char *argv[]) {
             qWarning().noquote() << warning.toString();
     });
     engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
+    engine.rootContext()->setContextProperty(QStringLiteral("pluginHost"), &pluginHost);
 
     engine.load(QUrl(QStringLiteral("qrc:/Main.qml")));
     if (engine.rootObjects().isEmpty()) {
-        qCritical() << "Could not load the Omawrite interface; resource available:"
+        qCritical() << "Could not load the FMD interface; resource available:"
                     << QFile::exists(QStringLiteral(":/Main.qml"));
         return -1;
     }
@@ -74,6 +81,8 @@ int main(int argc, char *argv[]) {
     const QStringList args = app.arguments();
     if (args.size() > 1 && !backend.modified())
         backend.open(QUrl::fromLocalFile(args.at(1)));
+    else
+        backend.restoreLastSession();
 
     return app.exec();
 }
