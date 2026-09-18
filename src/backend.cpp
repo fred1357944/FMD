@@ -74,6 +74,7 @@ QString statusChoicesKeyForFolder(const QString &folderPath) {
 const QString previewThemeSetting = QStringLiteral("preview/theme");
 const QString sidebarSplitSetting = QStringLiteral("view/sidebarSplitWidth");
 const QString previewSplitSetting = QStringLiteral("view/previewSplitWidth");
+const QString workspaceNavSplitSetting = QStringLiteral("view/workspaceNavSplitWidth");
 const QString threadsDraftsFolderSetting = QStringLiteral("threads/draftsFolder");
 const QString notesSiteFolderSetting = QStringLiteral("site/notesFolder");
 const QString changelogSiteFolderSetting = QStringLiteral("site/changelogFolder");
@@ -672,10 +673,13 @@ Backend::Backend(QObject *parent) : QObject(parent) {
             m_propertiesExpanded = settings.value(propertiesExpandedSetting, true).toBool();
             m_sidebarSplitWidth = settings.value(sidebarSplitSetting, 280).toInt();
             m_previewSplitWidth = settings.value(previewSplitSetting, 420).toInt();
+            m_workspaceNavSplitWidth = settings.value(workspaceNavSplitSetting, 132).toInt();
             if (m_sidebarSplitWidth < 180)
                 m_sidebarSplitWidth = 180;
             if (m_previewSplitWidth < 240)
                 m_previewSplitWidth = 240;
+            if (m_workspaceNavSplitWidth < 88)
+                m_workspaceNavSplitWidth = 88;
             const QString savedView = settings.value(projectViewSetting, QStringLiteral("editor")).toString();
             if (savedView == QLatin1String("table") || savedView == QLatin1String("board")
                 || savedView == QLatin1String("calendar") || savedView == QLatin1String("editor")
@@ -6334,6 +6338,15 @@ void Backend::setPreviewSplitWidth(int width) {
         return;
     m_previewSplitWidth = width;
     QSettings().setValue(previewSplitSetting, width);
+    emit splitSizesChanged();
+}
+
+void Backend::setWorkspaceNavSplitWidth(int width) {
+    width = qBound(88, width, 360);
+    if (m_workspaceNavSplitWidth == width)
+        return;
+    m_workspaceNavSplitWidth = width;
+    QSettings().setValue(workspaceNavSplitSetting, width);
     emit splitSizesChanged();
 }
 

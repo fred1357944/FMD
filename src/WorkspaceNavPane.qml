@@ -108,15 +108,41 @@ ColumnLayout {
         }
     }
 
-    RowLayout {
+    SplitView {
+        id: navSplit
+        objectName: "workspaceNavSplit"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: 4
+        orientation: Qt.Horizontal
+        handle: Rectangle {
+            implicitWidth: 8
+            implicitHeight: 8
+            color: "transparent"
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.SplitHandle.pressed || parent.SplitHandle.hovered ? 3 : 1
+                height: parent.height - 16
+                radius: 1
+                color: parent.SplitHandle.pressed
+                       ? backend.themeAccent
+                       : (parent.SplitHandle.hovered ? win.mutedColor : win.panelBorderColor)
+            }
+        }
 
         ColumnLayout {
-            Layout.preferredWidth: Math.max(win.scaledSize(128), parent.width * 0.4)
-            Layout.fillHeight: true
+            id: folderPane
+            objectName: "workspaceNavFolderPane"
+            SplitView.preferredWidth: backend.workspaceNavSplitWidth
+            SplitView.minimumWidth: win.scaledSize(88)
+            SplitView.maximumWidth: Math.max(win.scaledSize(88), navSplit.width - win.scaledSize(96))
             spacing: 2
+            onWidthChanged: {
+                if (width < win.scaledSize(88))
+                    return
+                if (Math.round(width) !== backend.workspaceNavSplitWidth)
+                    backend.workspaceNavSplitWidth = Math.round(width)
+            }
 
             Label {
                 Layout.fillWidth: true
@@ -244,15 +270,9 @@ ColumnLayout {
         }
         }
 
-        Rectangle {
-            Layout.fillHeight: true
-            implicitWidth: 1
-            color: win.panelBorderColor
-        }
-
         ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+            SplitView.fillWidth: true
+            SplitView.minimumWidth: win.scaledSize(96)
             spacing: 2
 
             Label {

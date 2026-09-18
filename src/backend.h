@@ -92,6 +92,7 @@ class Backend : public QObject {
     Q_PROPERTY(QString previewCanvas READ previewCanvas NOTIFY previewThemeChanged)
     Q_PROPERTY(int sidebarSplitWidth READ sidebarSplitWidth WRITE setSidebarSplitWidth NOTIFY splitSizesChanged)
     Q_PROPERTY(int previewSplitWidth READ previewSplitWidth WRITE setPreviewSplitWidth NOTIFY splitSizesChanged)
+    Q_PROPERTY(int workspaceNavSplitWidth READ workspaceNavSplitWidth WRITE setWorkspaceNavSplitWidth NOTIFY splitSizesChanged)
     Q_PROPERTY(QString threadsDraftsFolder READ threadsDraftsFolder WRITE setThreadsDraftsFolder NOTIFY threadsDraftsFolderChanged)
     Q_PROPERTY(QString notesSiteFolder READ notesSiteFolder WRITE setNotesSiteFolder NOTIFY notesSiteFolderChanged)
     Q_PROPERTY(QString changelogSiteFolder READ changelogSiteFolder WRITE setChangelogSiteFolder NOTIFY changelogSiteFolderChanged)
@@ -232,6 +233,8 @@ public:
     void setSidebarSplitWidth(int width);
     int previewSplitWidth() const { return m_previewSplitWidth; }
     void setPreviewSplitWidth(int width);
+    int workspaceNavSplitWidth() const { return m_workspaceNavSplitWidth; }
+    void setWorkspaceNavSplitWidth(int width);
     QString threadsDraftsFolder() const { return m_threadsDraftsFolder; }
     void setThreadsDraftsFolder(const QString &path);
     QString notesSiteFolder() const { return m_notesSiteFolder; }
@@ -647,6 +650,7 @@ private:
     bool m_sitePushBusy = false;
     int m_sidebarSplitWidth = 280;
     int m_previewSplitWidth = 420;
+    int m_workspaceNavSplitWidth = 132;
     QString m_threadsDraftsFolder;
     QString m_notesSiteFolder;
     QString m_changelogSiteFolder;

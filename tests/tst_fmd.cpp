@@ -175,6 +175,16 @@ private slots:
                  QString());
     }
 
+    void workspaceNavSplitWidthIsClamped() {
+        Backend backend;
+        backend.setWorkspaceNavSplitWidth(40);
+        QCOMPARE(backend.workspaceNavSplitWidth(), 88);
+        backend.setWorkspaceNavSplitWidth(900);
+        QCOMPARE(backend.workspaceNavSplitWidth(), 360);
+        backend.setWorkspaceNavSplitWidth(160);
+        QCOMPARE(backend.workspaceNavSplitWidth(), 160);
+    }
+
     void listsWorkspaceMarkdownFilesSorted() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
