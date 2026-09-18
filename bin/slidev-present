@@ -11,6 +11,9 @@ if [[ -s "${NVM_DIR}/nvm.sh" ]]; then
   # shellcheck disable=SC1090
   . "${NVM_DIR}/nvm.sh"
 fi
+# Vite on macOS binds localhost to ::1 and 127.0.0.1; the second listen
+# then dies with "Port N is already in use" even when lsof showed N free.
+export NODE_OPTIONS="${NODE_OPTIONS:+${NODE_OPTIONS} }--dns-result-order=ipv4first"
 
 usage() {
   cat <<'EOF'
@@ -20,6 +23,8 @@ EOF
 }
 
 log() { printf '%s\n' "$*"; }
+
+tmp_root() { printf '%s' "${TMPDIR:-/tmp}"; }
 
 find_npx() {
   if command -v npx >/dev/null 2>&1; then
@@ -37,10 +42,9 @@ find_npx() {
 
 port_in_use() {
   local port="$1"
-  if command -v lsof >/dev/null 2>&1; then
-    lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
-    return $?
-  fi
+  command -v lsof >/dev/null 2>&1 || return 1
+  lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1 && return 0
+  lsof -nP -i ":${port}" -sTCP:LISTEN >/dev/null 2>&1 && return 0
   return 1
 }
 
@@ -70,6 +74,106 @@ wait_for_http() {
     fi
     sleep 1
     n=$((n + 1))
+  done
+  return 1
+}
+
+collect_descendants() {
+  local pid="$1"
+  local child
+  for child in $(pgrep -P "${pid}" 2>/dev/null || true); do
+    collect_descendants "${child}"
+    printf '%s\n' "${child}"
+  done
+}
+
+kill_tree() {
+  local pid="$1"
+  [[ "${pid}" =~ ^[0-9]+$ ]] || return 0
+  kill -0 "${pid}" 2>/dev/null || return 0
+  local all child
+  all="$(collect_descendants "${pid}"; printf '%s\n' "${pid}")"
+  for child in ${all}; do
+    kill -TERM "${child}" 2>/dev/null || true
+  done
+  local n=0
+  while [[ "${n}" -lt 15 ]]; do
+    local live=0
+    for child in ${all}; do
+      if kill -0 "${child}" 2>/dev/null; then
+        live=1
+        break
+      fi
+    done
+    [[ "${live}" -eq 0 ]] && return 0
+    sleep 0.2
+    n=$((n + 1))
+  done
+  for child in ${all}; do
+    kill -KILL "${child}" 2>/dev/null || true
+  done
+}
+
+pids_listening() {
+  local port="$1"
+  {
+    lsof -nP -iTCP:"${port}" -sTCP:LISTEN -t 2>/dev/null || true
+    lsof -nP -i ":${port}" -sTCP:LISTEN -t 2>/dev/null || true
+  } | awk 'NF && $1 ~ /^[0-9]+$/' | sort -u
+}
+
+slidev_pids_for_file() {
+  local file="$1"
+  /bin/ps -axo pid=,command= | awk -v f="${file}" -v self="$$" -v parent="${PPID}" '
+    $1 == self { next }
+    $1 == parent { next }
+    index($0, "slidev-present") { next }
+    index($0, "slidev") && index($0, f) { print $1 }
+  '
+}
+
+kill_slidev_for_file() {
+  local file="$1"
+  local pid port recorded src
+  local tmp
+  tmp="$(tmp_root)"
+  for pid in $(slidev_pids_for_file "${file}"); do
+    kill_tree "${pid}"
+  done
+  for port in $(seq 3030 3059); do
+    src="${tmp}/fmd-slidev-${port}.src"
+    if [[ -f "${src}" ]] && [[ "$(cat "${src}" 2>/dev/null || true)" == "${file}" ]]; then
+      recorded="$(cat "${tmp}/fmd-slidev-${port}.pid" 2>/dev/null || true)"
+      kill_tree "${recorded}"
+      for pid in $(pids_listening "${port}"); do
+        kill_tree "${pid}"
+      done
+    fi
+  done
+}
+
+wait_port_free() {
+  local port="$1"
+  local n=0
+  while port_in_use "${port}" && [[ "${n}" -lt 25 ]]; do
+    sleep 0.2
+    n=$((n + 1))
+  done
+  if port_in_use "${port}"; then
+    return 1
+  fi
+  return 0
+}
+
+next_free_port() {
+  local port="$1"
+  local max=$((port + 30))
+  while [[ "${port}" -le "${max}" ]]; do
+    if ! port_in_use "${port}"; then
+      printf '%s\n' "${port}"
+      return 0
+    fi
+    port=$((port + 1))
   done
   return 1
 }
@@ -108,7 +212,7 @@ case "${cmd}" in
     fi
     file="$(cd "$(dirname "${file}")" && pwd)/$(basename "${file}")"
     if [[ "${dry}" == "1" ]]; then
-      url="http://localhost:${port}/"
+      url="http://127.0.0.1:${port}/"
       log "file=${file}"
       log "port=${port}"
       log "DRY-RUN"
@@ -117,31 +221,6 @@ case "${cmd}" in
       log "dryRun=true"
       exit 0
     fi
-    src_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.src"
-    pid_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.pid"
-    if port_in_use "${port}"; then
-      prev="$(cat "${src_file}" 2>/dev/null || true)"
-      if [[ "${prev}" == "${file}" ]]; then
-        old_pid="$(cat "${pid_file}" 2>/dev/null || true)"
-        if [[ -n "${old_pid}" ]]; then
-          kill "${old_pid}" 2>/dev/null || true
-          n=0
-          while port_in_use "${port}" && [[ "${n}" -lt 20 ]]; do
-            sleep 0.2
-            n=$((n + 1))
-          done
-        fi
-      fi
-      while port_in_use "${port}"; do
-        port=$((port + 1))
-      done
-      src_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.src"
-      pid_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.pid"
-    fi
-    url="http://localhost:${port}/"
-    log "file=${file}"
-    log "port=${port}"
-    printf '%s\n' "${file}" >"${src_file}"
     npx_bin="$(find_npx)" || {
       log "error: npx not found. Install Node, or put npx on PATH."
       log "ok=false"
@@ -156,46 +235,78 @@ case "${cmd}" in
       fi
       probe="$(dirname "${probe}")"
     done
-    log_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.log"
-    pid_file="${TMPDIR:-/tmp}/fmd-slidev-${port}.pid"
+    log "file=${file}"
+    kill_slidev_for_file "${file}"
+    port="$(next_free_port "${port}")" || {
+      log "error: no free Slidev port in 3030–3059"
+      log "ok=false"
+      exit 1
+    }
+    tmp="$(tmp_root)"
     if [[ ! -d "${workdir}/node_modules/@slidev/theme-default" ]]; then
+      theme_log="${tmp}/fmd-slidev-theme.log"
       log "installing=@slidev/theme-default"
       (
         cd "${workdir}"
         npm install --no-fund --no-audit --save-dev @slidev/theme-default
-      ) >>"${log_file}" 2>&1 || {
+      ) >>"${theme_log}" 2>&1 || {
         log "error: could not install @slidev/theme-default"
-        tail -n 20 "${log_file}" | while IFS= read -r line; do log "slidev: ${line}"; done
+        tail -n 20 "${theme_log}" | while IFS= read -r line; do log "slidev: ${line}"; done
         log "ok=false"
         exit 1
       }
     fi
-    (
-      cd "${workdir}"
-      exec "${npx_bin}" --yes @slidev/cli "${file}" --port "${port}" --open
-    ) >"${log_file}" 2>&1 &
-    echo $! >"${pid_file}"
-    wait_rc=0
-    wait_for_http "${port}" "${pid_file}" || wait_rc=$?
-    if [[ "${wait_rc}" -ne 0 ]]; then
+
+    tries=0
+    while [[ "${tries}" -lt 8 ]]; do
+      if port_in_use "${port}"; then
+        port="$(next_free_port $((port + 1)))" || break
+        tries=$((tries + 1))
+        continue
+      fi
+      src_file="${tmp}/fmd-slidev-${port}.src"
+      pid_file="${tmp}/fmd-slidev-${port}.pid"
+      log_file="${tmp}/fmd-slidev-${port}.log"
+      url="http://127.0.0.1:${port}/"
+      log "port=${port}"
+      printf '%s\n' "${file}" >"${src_file}"
+      : >"${log_file}"
+      (
+        cd "${workdir}"
+        exec "${npx_bin}" --yes @slidev/cli "${file}" --port "${port}" --open
+      ) >"${log_file}" 2>&1 &
+      echo $! >"${pid_file}"
+      wait_rc=0
+      wait_for_http "${port}" "${pid_file}" || wait_rc=$?
+      if [[ "${wait_rc}" -eq 0 ]]; then
+        log "ok=true"
+        log "url=${url}"
+        log "pid=$(cat "${pid_file}")"
+        exit 0
+      fi
+      old_pid="$(cat "${pid_file}" 2>/dev/null || true)"
+      kill_tree "${old_pid}"
+      if grep -q "already in use" "${log_file}" 2>/dev/null; then
+        log "retry: ${port} already in use"
+        port=$((port + 1))
+        tries=$((tries + 1))
+        continue
+      fi
       if [[ "${wait_rc}" -eq 2 ]]; then
         log "error: Slidev process exited before it was ready"
       else
         log "error: Slidev did not become ready on ${url}"
       fi
-      if [[ -f "${log_file}" ]]; then
-        log "log=${log_file}"
-        tail -n 40 "${log_file}" | while IFS= read -r line; do
-          log "slidev: ${line}"
-        done
-      fi
+      log "log=${log_file}"
+      tail -n 40 "${log_file}" | while IFS= read -r line; do
+        log "slidev: ${line}"
+      done
       log "ok=false"
       exit 1
-    fi
-    log "ok=true"
-    log "url=${url}"
-    log "pid=$(cat "${pid_file}")"
-    exit 0
+    done
+    log "error: Slidev did not become ready (ports busy)"
+    log "ok=false"
+    exit 1
     ;;
   -h|--help|help|"")
     usage

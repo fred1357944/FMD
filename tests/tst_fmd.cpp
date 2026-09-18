@@ -3014,6 +3014,21 @@ private slots:
                  QStringLiteral("queued"));
     }
 
+    void slidevPresentScriptKillsWholeTreeAndPinsIpv4() {
+        const QString script = QFINDTESTDATA("../bin/slidev-present");
+        QVERIFY(!script.isEmpty());
+        QFile file(script);
+        QVERIFY(file.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString text = QString::fromUtf8(file.readAll());
+        QVERIFY(text.contains(QStringLiteral("dns-result-order=ipv4first")));
+        QVERIFY(text.contains(QStringLiteral("kill_tree")));
+        QVERIFY(text.contains(QStringLiteral("kill_slidev_for_file")));
+        QVERIFY(text.contains(QStringLiteral("slidev_pids_for_file")));
+        QVERIFY(text.contains(QStringLiteral("slidev-present")));
+        QVERIFY(text.contains(QStringLiteral("http://127.0.0.1:")));
+        QVERIFY(text.contains(QStringLiteral("v self=")));
+    }
+
     void defaultSlidesSiteFolderIsTheLibrary() {
         Backend backend;
         QVERIFY(backend.defaultSlidesSiteFolder().endsWith(
