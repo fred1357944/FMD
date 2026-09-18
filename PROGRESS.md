@@ -4,7 +4,7 @@
 
 ## 當前
 
-已裝 0.5.8：檔案側欄左右兩欄可拖。請完全退出再開。把中間那條往左拉，右邊檔名會變完整。
+已裝 0.5.9：側欄檔名從右邊省略、停上去看全名；卡片標籤不再把檔案清單清空。請完全退出再開。
 
 花園／changelog 空站已 push 為 private：`andgreen-notes`、`fmd-site`。偏好設定裡把花園站資料夾指到 `/Users/laihongyi/Projects/andgreen-notes`。
 
@@ -19,6 +19,7 @@
 
 | 紀錄 ID | 狀態 | 做了什麼 | 證據／限制 |
 |---|---|---|---|
+| FMD-20260918-059 | 已安裝 | 0.5.9 側欄文字省略＋標籤篩選不藏檔 | Totals: 121 passed；`/Applications/FMD.app` 16:25:15；otool 無 Homebrew |
 | FMD-20260918-058 | 已安裝 | 0.5.8 檔案側欄左右欄可拖 | Totals: 121 passed；`/Applications/FMD.app` 16:20:17；otool 無 Homebrew；比例寫入 QSettings `view/workspaceNavSplitWidth` |
 | FMD-20260918-057 | 已安裝 | 0.5.7 熱力圖進日曆、分頁對齊 ⌘1–6、智圖左側跳轉 | Totals: 120 passed；`/Applications/FMD.app` 16:09:27；otool 無 Homebrew；熱力圖週日起算、size%7==0；hex 色碼不當標籤 |
 | FMD-20260918-056 | 已安裝 | 0.5.6 重開同一份 Slidev 時殺掉 npm+node 整組 | Totals: 120 passed；live `slidev-present` `ok=true url=http://127.0.0.1:3030/` 10.96s；舊 21424/21460 已死；listen `127.0.0.1:3030`；HTML title `FMD × Slidev 學習稿`；`/Applications/FMD.app` 15:55:43；otool 無 Homebrew |

@@ -178,7 +178,7 @@ private slots:
     void workspaceNavSplitWidthIsClamped() {
         Backend backend;
         backend.setWorkspaceNavSplitWidth(40);
-        QCOMPARE(backend.workspaceNavSplitWidth(), 88);
+        QCOMPARE(backend.workspaceNavSplitWidth(), 108);
         backend.setWorkspaceNavSplitWidth(900);
         QCOMPARE(backend.workspaceNavSplitWidth(), 360);
         backend.setWorkspaceNavSplitWidth(160);
@@ -3344,6 +3344,20 @@ private slots:
         QCOMPARE(kinds.value(QStringLiteral("plan.pdf")), QStringLiteral("pdf"));
         QCOMPARE(kinds.value(QStringLiteral("cover.png")), QStringLiteral("image"));
         QVERIFY(!names.contains(QStringLiteral("package.json")));
+
+        QFile tagged(directory.filePath(QStringLiteral("tagged.md")));
+        QVERIFY(tagged.open(QIODevice::WriteOnly | QIODevice::Text));
+        tagged.write("---\ntags: [slidev-goto-dialog]\n---\n# Tagged\n");
+        tagged.close();
+        backend.openFolder(QUrl::fromLocalFile(directory.path()));
+        backend.setSelectedWorkspacePath(directory.path());
+        backend.setTagFilter(QStringLiteral("slidev-goto-dialog"));
+        QStringList afterFilter;
+        for (const QVariant &item : backend.workspaceNavFiles())
+            afterFilter.append(item.toMap().value(QStringLiteral("name")).toString());
+        QVERIFY(afterFilter.contains(QStringLiteral("tagged.md")));
+        QVERIFY(afterFilter.contains(QStringLiteral("note.md")));
+        backend.setTagFilter(QString());
     }
 
     void dualPaneListsNestedEmptyFoldersInParent() {

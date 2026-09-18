@@ -678,8 +678,8 @@ Backend::Backend(QObject *parent) : QObject(parent) {
                 m_sidebarSplitWidth = 180;
             if (m_previewSplitWidth < 240)
                 m_previewSplitWidth = 240;
-            if (m_workspaceNavSplitWidth < 88)
-                m_workspaceNavSplitWidth = 88;
+            if (m_workspaceNavSplitWidth < 108)
+                m_workspaceNavSplitWidth = 108;
             const QString savedView = settings.value(projectViewSetting, QStringLiteral("editor")).toString();
             if (savedView == QLatin1String("table") || savedView == QLatin1String("board")
                 || savedView == QLatin1String("calendar") || savedView == QLatin1String("editor")
@@ -4727,10 +4727,6 @@ QVariantList Backend::workspaceNavFiles() const
         if (shouldSkipListedFileName(info.fileName()))
             continue;
         const QString kind = navFileKind(info);
-        if (!m_tagFilter.isEmpty()) {
-            if (kind != QLatin1String("markdown") || !byPath.contains(abs))
-                continue;
-        }
         QVariantMap row{
             {QStringLiteral("kind"), kind},
             {QStringLiteral("name"), info.fileName()},
@@ -6342,7 +6338,7 @@ void Backend::setPreviewSplitWidth(int width) {
 }
 
 void Backend::setWorkspaceNavSplitWidth(int width) {
-    width = qBound(88, width, 360);
+    width = qBound(108, width, 360);
     if (m_workspaceNavSplitWidth == width)
         return;
     m_workspaceNavSplitWidth = width;

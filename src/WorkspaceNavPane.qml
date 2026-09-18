@@ -45,7 +45,9 @@ ColumnLayout {
 
         ToolButton {
             objectName: "workspaceNavGoUpButton"
-            text: "← " + (backend.uiLanguage, backend.t("navGoUp"))
+            text: nav.width < win.scaledSize(280)
+                  ? "←"
+                  : ("← " + (backend.uiLanguage, backend.t("navGoUp")))
             enabled: backend.workspaceNavCanGoUp
             implicitHeight: win.scaledSize(26)
             font.family: "iA Writer Mono S"
@@ -56,12 +58,18 @@ ColumnLayout {
         }
 
         Flickable {
+            id: crumbFlick
             Layout.fillWidth: true
             Layout.preferredHeight: win.scaledSize(26)
             clip: true
-            contentWidth: crumbRow.implicitWidth
+            contentWidth: Math.max(width, crumbRow.implicitWidth)
             contentHeight: height
             boundsBehavior: Flickable.StopAtBounds
+            function revealEnd() {
+                contentX = Math.max(0, contentWidth - width)
+            }
+            onContentWidthChanged: revealEnd()
+            onWidthChanged: revealEnd()
 
             Row {
                 id: crumbRow
@@ -134,11 +142,11 @@ ColumnLayout {
             id: folderPane
             objectName: "workspaceNavFolderPane"
             SplitView.preferredWidth: backend.workspaceNavSplitWidth
-            SplitView.minimumWidth: win.scaledSize(88)
-            SplitView.maximumWidth: Math.max(win.scaledSize(88), navSplit.width - win.scaledSize(96))
+            SplitView.minimumWidth: win.scaledSize(108)
+            SplitView.maximumWidth: Math.max(win.scaledSize(108), navSplit.width - win.scaledSize(96))
             spacing: 2
             onWidthChanged: {
-                if (width < win.scaledSize(88))
+                if (width < win.scaledSize(108))
                     return
                 if (Math.round(width) !== backend.workspaceNavSplitWidth)
                     backend.workspaceNavSplitWidth = Math.round(width)
@@ -193,15 +201,15 @@ ColumnLayout {
                             backend.toggleWorkspaceFolder(folderDelegate.fileEntry.path)
                     }
                 }
-                Row {
+                RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 6 + (folderDelegate.fileEntry
-                                             ? folderDelegate.fileEntry.depth * 14 : 0)
+                    anchors.leftMargin: 4 + (folderDelegate.fileEntry
+                                             ? folderDelegate.fileEntry.depth * 10 : 0)
                     anchors.rightMargin: 4
                     spacing: 4
                     Item {
-                        width: win.scaledSize(14)
-                        height: parent.height
+                        Layout.preferredWidth: win.scaledSize(14)
+                        Layout.fillHeight: true
                         Label {
                             anchors.centerIn: parent
                             visible: folderDelegate.fileEntry && folderDelegate.fileEntry.hasChildren
@@ -220,22 +228,26 @@ ColumnLayout {
                         }
                     }
                     FileKindIcon {
-                        width: win.scaledSize(14)
-                        height: win.scaledSize(14)
-                        anchors.verticalCenter: parent.verticalCenter
+                        Layout.preferredWidth: win.scaledSize(14)
+                        Layout.preferredHeight: win.scaledSize(14)
                         kind: "folder"
                         ink: folderDelegate.highlighted ? win.strongTextColor : win.mutedColor
                     }
                     Label {
-                        width: parent.width - win.scaledSize(36)
-                        height: parent.height
+                        id: folderNameLabel
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
                         text: folderDelegate.fileEntry ? folderDelegate.fileEntry.name : ""
-                        elide: Text.ElideMiddle
+                        elide: Text.ElideRight
                         color: win.strongTextColor
                         font.family: "iA Writer Mono S"
                         font.pixelSize: win.scaledSize(12)
                         font.bold: folderDelegate.highlighted
                         verticalAlignment: Text.AlignVCenter
+                        HoverHandler { id: folderNameHover }
+                        ToolTip.visible: folderNameHover.hovered && folderNameLabel.truncated
+                        ToolTip.text: folderDelegate.fileEntry ? folderDelegate.fileEntry.name : ""
+                        ToolTip.delay: 350
                     }
                 }
                 Menu {
@@ -402,7 +414,7 @@ ColumnLayout {
                     }
                 }
 
-                Row {
+                RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 6
                     anchors.rightMargin: 6
@@ -410,37 +422,36 @@ ColumnLayout {
                     visible: !fileDelegate.renaming
 
                     FileKindIcon {
-                        width: win.scaledSize(16)
-                        height: win.scaledSize(16)
-                        anchors.verticalCenter: parent.verticalCenter
+                        Layout.preferredWidth: win.scaledSize(16)
+                        Layout.preferredHeight: win.scaledSize(16)
                         kind: fileDelegate.fileEntry && fileDelegate.fileEntry.kind
                               ? fileDelegate.fileEntry.kind : "file"
                         ink: fileDelegate.highlighted ? win.strongTextColor : win.mutedColor
                     }
 
                     Label {
-                        width: parent.width - win.scaledSize(fileDelegate.isFolder ? 36
-                                                             : (fileDelegate.isMarkdown ? 22 : 52))
-                        height: parent.height
+                        id: fileNameLabel
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
                         text: fileDelegate.fileEntry
-                              ? (fileDelegate.isFolder
-                                 ? fileDelegate.fileEntry.name
-                                 : ((fileDelegate.fileEntry.pinned ? "★ " : "")
-                                    + (fileDelegate.fileEntry.threads
-                                       ? (fileDelegate.fileEntry.name + "  · Threads")
-                                       : fileDelegate.fileEntry.name)))
+                              ? ((fileDelegate.fileEntry.pinned ? "★ " : "")
+                                 + fileDelegate.fileEntry.name)
                               : ""
-                        elide: Text.ElideMiddle
+                        elide: Text.ElideRight
                         color: win.strongTextColor
                         font.family: "iA Writer Mono S"
                         font.pixelSize: win.scaledSize(12)
                         verticalAlignment: Text.AlignVCenter
+                        HoverHandler { id: fileNameHover }
+                        ToolTip.visible: fileNameHover.hovered && fileNameLabel.truncated
+                        ToolTip.text: fileDelegate.fileEntry ? fileDelegate.fileEntry.name : ""
+                        ToolTip.delay: 350
                     }
 
                     Label {
                         visible: fileDelegate.isFolder
-                        width: visible ? win.scaledSize(14) : 0
-                        height: parent.height
+                        Layout.preferredWidth: win.scaledSize(14)
+                        Layout.fillHeight: true
                         text: "›"
                         color: win.mutedColor
                         font.family: "iA Writer Mono S"
@@ -453,8 +464,8 @@ ColumnLayout {
                         visible: fileDelegate.fileEntry && !fileDelegate.isFolder
                                  && !fileDelegate.isMarkdown
                                  && fileDelegate.fileEntry.suffix
-                        width: visible ? win.scaledSize(28) : 0
-                        height: parent.height
+                        Layout.preferredWidth: win.scaledSize(28)
+                        Layout.fillHeight: true
                         text: fileDelegate.fileEntry && fileDelegate.fileEntry.suffix
                               ? fileDelegate.fileEntry.suffix : ""
                         color: win.mutedColor
@@ -548,11 +559,9 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: workspaceSidebar.count === 0
                 wrapMode: Text.Wrap
-                text: backend.tagFilter.length > 0
-                    ? "No notes tagged #" + backend.tagFilter + "."
-                    : (backend.workspaceFolderPath.length > 0
-                        ? (backend.uiLanguage, backend.t("navEmptyFolder"))
-                        : (backend.uiLanguage, backend.t("openFolderHint")))
+                text: backend.workspaceFolderPath.length > 0
+                    ? (backend.uiLanguage, backend.t("navEmptyFolder"))
+                    : (backend.uiLanguage, backend.t("openFolderHint"))
                 color: win.mutedColor
                 font.family: "iA Writer Mono S"
                 font.pixelSize: win.scaledSize(12)
