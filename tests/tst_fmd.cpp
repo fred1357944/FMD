@@ -3226,6 +3226,43 @@ private slots:
         QCOMPARE(backend.editorPlainText(), QStringLiteral("hello there"));
     }
 
+    void dualPaneMarksPdfAndImageKinds() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        QFile note(directory.filePath(QStringLiteral("note.md")));
+        QVERIFY(note.open(QIODevice::WriteOnly | QIODevice::Text));
+        note.write("# Hi\n");
+        note.close();
+        QFile pdf(directory.filePath(QStringLiteral("plan.pdf")));
+        QVERIFY(pdf.open(QIODevice::WriteOnly));
+        pdf.write("%PDF-1.4\n");
+        pdf.close();
+        QFile png(directory.filePath(QStringLiteral("cover.png")));
+        QVERIFY(png.open(QIODevice::WriteOnly));
+        png.write("x");
+        png.close();
+        QFile lock(directory.filePath(QStringLiteral("package.json")));
+        QVERIFY(lock.open(QIODevice::WriteOnly | QIODevice::Text));
+        lock.write("{}\n");
+        lock.close();
+
+        Backend backend;
+        backend.openFolder(QUrl::fromLocalFile(directory.path()));
+        backend.setSelectedWorkspacePath(directory.path());
+        QHash<QString, QString> kinds;
+        QStringList names;
+        for (const QVariant &item : backend.workspaceNavFiles()) {
+            const QVariantMap row = item.toMap();
+            names.append(row.value(QStringLiteral("name")).toString());
+            kinds.insert(row.value(QStringLiteral("name")).toString(),
+                         row.value(QStringLiteral("kind")).toString());
+        }
+        QCOMPARE(kinds.value(QStringLiteral("note.md")), QStringLiteral("markdown"));
+        QCOMPARE(kinds.value(QStringLiteral("plan.pdf")), QStringLiteral("pdf"));
+        QCOMPARE(kinds.value(QStringLiteral("cover.png")), QStringLiteral("image"));
+        QVERIFY(!names.contains(QStringLiteral("package.json")));
+    }
+
     void dualPaneListsNestedEmptyFoldersInParent() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
@@ -3259,7 +3296,7 @@ private slots:
         QVERIFY(names.contains(QStringLiteral("inner")));
         QVERIFY(names.contains(QStringLiteral("a.md")));
         QCOMPARE(kinds.first(), QStringLiteral("folder"));
-        QVERIFY(kinds.contains(QStringLiteral("file")));
+        QVERIFY(kinds.contains(QStringLiteral("markdown")));
     }
 
     void cardsViewCoverPinTagAndAndHeatmap() {

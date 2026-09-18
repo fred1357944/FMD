@@ -4,7 +4,7 @@
 
 ## 當前
 
-已裝 0.5.2：雙欄右邊會列出這一層的子資料夾；Finder 新建的資料夾會被監看。請完全退出再開。點 `published` 應看到「未命名檔案夾」。
+已裝 0.5.3：側欄類型小圖標；Mac 圖示是奶油紙底的毛筆 F。請完全退出再開（Dock 圖示有時要再等一下或登出才會換）。
 
 花園／changelog 空站已 push 為 private：`andgreen-notes`、`fmd-site`。偏好設定裡把花園站資料夾指到 `/Users/laihongyi/Projects/andgreen-notes`。
 
@@ -19,7 +19,8 @@
 
 | 紀錄 ID | 狀態 | 做了什麼 | 證據／限制 |
 |---|---|---|---|
-| FMD-20260918-052 | 已安裝 | 0.5.2 雙欄右欄列出子資料夾＋監看 Finder 新增 | Totals: 116 passed；`/Applications/FMD.app` 14:49:01；otool 無 Homebrew；無深度上限；origin `https://github.com/fred1357944/FMD` master `766f715` 已 push，未推 omacom/omawrite |
+| FMD-20260918-053 | 已安裝 | 0.5.3 側欄檔案類型小圖標；Mac 圖示毛筆 F | Totals: 117 passed；`/Applications/FMD.app` 15:05:34；`Resources/fmd.icns`；otool 無 Homebrew |
+| FMD-20260918-052 | 已安裝 | 0.5.2 雙欄右欄列出子資料夾＋監看 Finder 新增 | Totals: 116 passed；`/Applications/FMD.app` 14:49:01；otool 無 Homebrew；無深度上限；origin `https://github.com/fred1357944/FMD` master 已 push，未推 omacom/omawrite |
 | FMD-20260918-050 | 已安裝 | 0.5.0 卡片牆＋雙欄側欄＋捷徑封面；Slidev 學習稿取代陽春標題頁 | Totals: 114 passed；`/Applications/FMD.app` 14:29:45；otool 無 Homebrew；未把 Vite 塞進 app；未載入 Obsidian JS；學習稿 PNG 溢出版測未在本輪逐張看 |
 | FMD-20260918-041 | 已安裝 | 0.4.1 修 Slidev（theme-default + 聽 ::1）；⌘⌥E 在檔案清單顯示目前這篇 | Totals: 112 passed；`/Applications/FMD.app` 13:59:18；slidev-present 3045 `ok=true`；otool 無 Homebrew |
 | FMD-20260918-040 | 已安裝 | 0.4.0 右側 Slides 預覽；site-push 一鍵推花園／changelog；Vite 仍在外面 | Totals: 111 passed；`/Applications/FMD.app` 13:31:47；`~/bin/site-push`；otool 無 Homebrew；notes CNAME 在 1.1.1.1 已指向 github.io，本機解析仍可能卡否定快取 |

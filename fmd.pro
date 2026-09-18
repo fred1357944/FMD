@@ -26,3 +26,7 @@ SOURCES += \
     src/uilocale.cpp
 
 RESOURCES += src/resources.qrc
+
+macx {
+    ICON = icons/fmd.icns
+}

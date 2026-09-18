@@ -423,6 +423,7 @@ public:
     Q_INVOKABLE bool renameNote(const QUrl &url, const QString &newName);
     Q_INVOKABLE bool moveNoteToTrash(const QUrl &url);
     Q_INVOKABLE void revealInFinder(const QUrl &url);
+    Q_INVOKABLE void openLocalFile(const QUrl &url);
     Q_INVOKABLE int expandAncestorsOfCurrentFile();
     Q_INVOKABLE int workspaceIndexOfCurrentFile() const;
     Q_INVOKABLE QVariantMap validateThreadsDraft();

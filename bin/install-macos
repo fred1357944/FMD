@@ -21,6 +21,14 @@ fi
 cp "$SRC" "$BIN"
 chmod +x "$BIN"
 
+ICON_SRC="$ROOT/icons/fmd.icns"
+if [ -f "$ICON_SRC" ]; then
+  mkdir -p "$APP/Contents/Resources"
+  cp "$ICON_SRC" "$APP/Contents/Resources/fmd.icns"
+  /usr/libexec/PlistBuddy -c 'Delete :CFBundleIconFile' "$APP/Contents/Info.plist" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c 'Add :CFBundleIconFile string fmd' "$APP/Contents/Info.plist"
+fi
+
 otool -L "$BIN" | awk '/\/opt\/homebrew\/.*\.framework/ {print $1}' | while read -r dep; do
   name=$(printf '%s' "$dep" | sed -E 's|.*/(Qt[^/]+)\.framework/.*|\1|')
   new="@executable_path/../Frameworks/${name}.framework/Versions/A/${name}"
@@ -43,6 +51,7 @@ if otool -L "$BIN" | grep -q /opt/homebrew; then
 fi
 
 codesign --force --sign - --timestamp=none --deep "$APP" >/dev/null
+touch "$APP"
 
 mkdir -p "$HOME/bin"
 chmod +x "$ROOT/bin/site-push" "$ROOT/bin/slidev-present" 2>/dev/null || true

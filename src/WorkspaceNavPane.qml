@@ -80,18 +80,30 @@ ColumnLayout {
                         backend.selectedWorkspacePath = folderDelegate.fileEntry.path
                     }
                 }
-                Label {
+                Row {
                     anchors.fill: parent
-                    anchors.leftMargin: 8 + (folderDelegate.fileEntry
-                                             ? folderDelegate.fileEntry.depth * 14 : 0)
+                    anchors.leftMargin: 6 + (folderDelegate.fileEntry
+                                             ? folderDelegate.fileEntry.depth * 12 : 0)
                     anchors.rightMargin: 6
-                    text: folderDelegate.fileEntry ? folderDelegate.fileEntry.name : ""
-                    elide: Text.ElideMiddle
-                    color: win.strongTextColor
-                    font.family: "iA Writer Mono S"
-                    font.pixelSize: win.scaledSize(12)
-                    font.bold: true
-                    verticalAlignment: Text.AlignVCenter
+                    spacing: 6
+                    FileKindIcon {
+                        width: win.scaledSize(14)
+                        height: win.scaledSize(14)
+                        anchors.verticalCenter: parent.verticalCenter
+                        kind: "folder"
+                        ink: folderDelegate.highlighted ? win.strongTextColor : win.mutedColor
+                    }
+                    Label {
+                        width: parent.width - win.scaledSize(20)
+                        height: parent.height
+                        text: folderDelegate.fileEntry ? folderDelegate.fileEntry.name : ""
+                        elide: Text.ElideMiddle
+                        color: win.strongTextColor
+                        font.family: "iA Writer Mono S"
+                        font.pixelSize: win.scaledSize(12)
+                        font.bold: folderDelegate.highlighted
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
                 Menu {
                     id: folderMenu
@@ -150,14 +162,16 @@ ColumnLayout {
                 readonly property var fileEntry: modelData
                 readonly property bool isFolder:
                     fileEntry && fileEntry.kind === "folder"
+                readonly property bool isMarkdown:
+                    fileEntry && fileEntry.kind === "markdown"
                 readonly property bool currentFile:
-                    fileEntry && !isFolder
+                    fileEntry && isMarkdown
                     && backend.fileUrl.toString() === fileEntry.url.toString()
                 readonly property bool renaming:
                     fileEntry && win.renamingUrl.toString() === fileEntry.url.toString()
                 width: ListView.view ? ListView.view.width : parent.width
                 text: ""
-                implicitHeight: win.scaledSize(fileEntry && fileEntry.cover ? 40 : 32)
+                implicitHeight: win.scaledSize(32)
                 highlighted: currentFile
                 Drag.dragType: Drag.Automatic
                 Drag.supportedActions: Qt.CopyAction
@@ -192,9 +206,16 @@ ColumnLayout {
                         }
                         if (!fileDelegate.fileEntry)
                             return
-                        backend.selectedWorkspacePath = fileDelegate.fileEntry.path
-                        if (!fileDelegate.isFolder && !fileDelegate.currentFile)
-                            win.requestOpen(fileDelegate.fileEntry.url)
+                        if (fileDelegate.isFolder) {
+                            backend.selectedWorkspacePath = fileDelegate.fileEntry.path
+                            return
+                        }
+                        if (fileDelegate.isMarkdown) {
+                            if (!fileDelegate.currentFile)
+                                win.requestOpen(fileDelegate.fileEntry.url)
+                            return
+                        }
+                        backend.openLocalFile(fileDelegate.fileEntry.url)
                     }
                 }
 
@@ -205,34 +226,18 @@ ColumnLayout {
                     spacing: 6
                     visible: !fileDelegate.renaming
 
-                    Rectangle {
-                        width: win.scaledSize(28)
-                        height: win.scaledSize(28)
+                    FileKindIcon {
+                        width: win.scaledSize(16)
+                        height: win.scaledSize(16)
                         anchors.verticalCenter: parent.verticalCenter
-                        radius: 4
-                        color: win.darkMode ? "#1b1b1b" : "#efeae2"
-                        clip: true
-                        Label {
-                            anchors.centerIn: parent
-                            visible: fileDelegate.isFolder
-                            text: "▸"
-                            color: win.mutedColor
-                            font.family: "iA Writer Mono S"
-                            font.pixelSize: win.scaledSize(14)
-                        }
-                        Image {
-                            anchors.fill: parent
-                            visible: !fileDelegate.isFolder
-                                     && fileDelegate.fileEntry && fileDelegate.fileEntry.cover
-                            source: fileDelegate.fileEntry && fileDelegate.fileEntry.cover
-                                    ? fileDelegate.fileEntry.cover : ""
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                        }
+                        kind: fileDelegate.fileEntry && fileDelegate.fileEntry.kind
+                              ? fileDelegate.fileEntry.kind : "file"
+                        ink: fileDelegate.highlighted ? win.strongTextColor : win.mutedColor
                     }
 
                     Label {
-                        width: parent.width - win.scaledSize(34)
+                        width: parent.width - win.scaledSize(fileDelegate.isMarkdown
+                                                             || fileDelegate.isFolder ? 22 : 52)
                         height: parent.height
                         text: fileDelegate.fileEntry
                               ? (fileDelegate.isFolder
@@ -246,6 +251,21 @@ ColumnLayout {
                         color: win.strongTextColor
                         font.family: "iA Writer Mono S"
                         font.pixelSize: win.scaledSize(12)
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    Label {
+                        visible: fileDelegate.fileEntry && !fileDelegate.isFolder
+                                 && !fileDelegate.isMarkdown
+                                 && fileDelegate.fileEntry.suffix
+                        width: visible ? win.scaledSize(28) : 0
+                        height: parent.height
+                        text: fileDelegate.fileEntry && fileDelegate.fileEntry.suffix
+                              ? fileDelegate.fileEntry.suffix : ""
+                        color: win.mutedColor
+                        font.family: "iA Writer Mono S"
+                        font.pixelSize: win.scaledSize(9)
+                        horizontalAlignment: Text.AlignRight
                         verticalAlignment: Text.AlignVCenter
                     }
                 }
@@ -292,8 +312,12 @@ ColumnLayout {
                     MenuItem {
                         visible: !fileDelegate.isFolder
                         text: (backend.uiLanguage, backend.t("openNote"))
-                        onTriggered: if (fileDelegate.fileEntry)
-                            win.requestOpen(fileDelegate.fileEntry.url)
+                        onTriggered: if (fileDelegate.fileEntry) {
+                            if (fileDelegate.isMarkdown)
+                                win.requestOpen(fileDelegate.fileEntry.url)
+                            else
+                                backend.openLocalFile(fileDelegate.fileEntry.url)
+                        }
                     }
                     MenuItem {
                         text: fileDelegate.isFolder
@@ -303,7 +327,7 @@ ColumnLayout {
                             win.startRename(fileDelegate.fileEntry.url)
                     }
                     MenuItem {
-                        visible: !fileDelegate.isFolder
+                        visible: fileDelegate.isMarkdown
                         text: fileDelegate.fileEntry && fileDelegate.fileEntry.pinned
                               ? (backend.uiLanguage, backend.t("unpinNote"))
                               : (backend.uiLanguage, backend.t("pinNote"))

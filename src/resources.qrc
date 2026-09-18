@@ -24,6 +24,7 @@
         <file alias="ProjectBoardView.qml">ProjectBoardView.qml</file>
         <file alias="ProjectCardsView.qml">ProjectCardsView.qml</file>
         <file alias="WorkspaceNavPane.qml">WorkspaceNavPane.qml</file>
+        <file alias="FileKindIcon.qml">FileKindIcon.qml</file>
         <file alias="ProjectCalendarView.qml">ProjectCalendarView.qml</file>
         <file alias="MindmapView.qml">MindmapView.qml</file>
         <file alias="CardDragLayer.qml">CardDragLayer.qml</file>

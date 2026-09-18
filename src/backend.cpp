@@ -193,6 +193,42 @@ bool shouldSkipWorkspacePath(const QString &rootPath, const QString &filePath,
     return false;
 }
 
+bool shouldSkipListedFileName(const QString &fileName) {
+    const QString lower = fileName.toLower();
+    if (lower.startsWith(QLatin1Char('.')))
+        return true;
+    static const QStringList skip = {
+        QStringLiteral("package.json"), QStringLiteral("package-lock.json"),
+        QStringLiteral("yarn.lock"), QStringLiteral("pnpm-lock.yaml"),
+        QStringLiteral("cargo.lock"), QStringLiteral("go.sum"),
+        QStringLiteral("composer.lock")
+    };
+    return skip.contains(lower);
+}
+
+QString navFileKind(const QFileInfo &info) {
+    if (info.isDir())
+        return QStringLiteral("folder");
+    const QString suffix = info.suffix().toLower();
+    if (suffix == QLatin1String("md") || suffix == QLatin1String("markdown"))
+        return QStringLiteral("markdown");
+    if (suffix == QLatin1String("pdf"))
+        return QStringLiteral("pdf");
+    if (suffix == QLatin1String("png") || suffix == QLatin1String("jpg")
+            || suffix == QLatin1String("jpeg") || suffix == QLatin1String("gif")
+            || suffix == QLatin1String("webp") || suffix == QLatin1String("svg")
+            || suffix == QLatin1String("heic"))
+        return QStringLiteral("image");
+    if (suffix == QLatin1String("css") || suffix == QLatin1String("js")
+            || suffix == QLatin1String("ts") || suffix == QLatin1String("jsx")
+            || suffix == QLatin1String("tsx") || suffix == QLatin1String("json")
+            || suffix == QLatin1String("qml") || suffix == QLatin1String("py")
+            || suffix == QLatin1String("rb") || suffix == QLatin1String("go")
+            || suffix == QLatin1String("rs"))
+        return QStringLiteral("code");
+    return QStringLiteral("file");
+}
+
 QString fileIdentity(const QString &path)
 {
     if (path.isEmpty())
@@ -2700,6 +2736,18 @@ bool Backend::moveNoteToTrash(const QUrl &url) {
     return true;
 }
 
+void Backend::openLocalFile(const QUrl &url) {
+    if (!url.isLocalFile())
+        return;
+    const QString path = url.toLocalFile();
+    if (!QFileInfo::exists(path)) {
+        setStatus(QStringLiteral("That file is gone."));
+        return;
+    }
+    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path)))
+        setStatus(QStringLiteral("Could not open %1.").arg(QFileInfo(path).fileName()));
+}
+
 void Backend::revealInFinder(const QUrl &url) {
     if (!url.isLocalFile())
         return;
@@ -4521,23 +4569,31 @@ QVariantList Backend::workspaceNavFiles() const
             {QStringLiteral("name"), info.fileName()},
             {QStringLiteral("path"), abs},
             {QStringLiteral("url"), QUrl::fromLocalFile(abs)},
+            {QStringLiteral("suffix"), QString()},
             {QStringLiteral("depth"), 0},
             {QStringLiteral("modified"), info.lastModified().toMSecsSinceEpoch()},
         });
     }
 
-    const QFileInfoList entries = QDir(folder).entryInfoList(
-        QStringList{QStringLiteral("*.md"), QStringLiteral("*.markdown")}, QDir::Files, flags);
+    const QFileInfoList entries = QDir(folder).entryInfoList(QDir::Files | QDir::Readable, flags);
 
     for (const QFileInfo &info : entries) {
         const QString abs = info.absoluteFilePath();
-        if (!m_tagFilter.isEmpty() && !byPath.contains(abs))
+        if (!root.isEmpty() && shouldSkipWorkspacePath(root, abs))
             continue;
+        if (shouldSkipListedFileName(info.fileName()))
+            continue;
+        const QString kind = navFileKind(info);
+        if (!m_tagFilter.isEmpty()) {
+            if (kind != QLatin1String("markdown") || !byPath.contains(abs))
+                continue;
+        }
         QVariantMap row{
-            {QStringLiteral("kind"), QStringLiteral("file")},
+            {QStringLiteral("kind"), kind},
             {QStringLiteral("name"), info.fileName()},
             {QStringLiteral("path"), abs},
             {QStringLiteral("url"), QUrl::fromLocalFile(abs)},
+            {QStringLiteral("suffix"), info.suffix().toUpper()},
             {QStringLiteral("depth"), 0},
             {QStringLiteral("modified"), info.lastModified().toMSecsSinceEpoch()},
         };
